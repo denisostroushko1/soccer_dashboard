@@ -1,4 +1,6 @@
 
+source('keys.R')
+
 prefix <- './Collect Data/One Time Pull/'
 
 source(paste0(prefix, 'Brazilian Serie A.R')) # 2023-03-20 19:12:36 to 21:00:24
@@ -55,8 +57,8 @@ nrow(data_all)
 write.csv(data_all, "./Collect Data/One Time Pull/dashboard_data.csv")
 
 # uplaod to AWS 
-Sys.setenv("AWS_ACCESS_KEY_ID" = "AKIAJ6746JOZ3BSWWIEA",
-           "AWS_SECRET_ACCESS_KEY" = "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",
+Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
+           "AWS_SECRET_ACCESS_KEY" = secret_key,
            "AWS_DEFAULT_REGION" = "us-east-2")
 
 # Set the name of the S3 bucket you want to upload the file to

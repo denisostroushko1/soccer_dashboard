@@ -10,15 +10,14 @@ execute:
 
 ---
 
-# Testing Quatro README
+# Product Title: Advanced player-level soccer data analysis
 
-```{r}
+# Product Description
 
-library(tidyverse)
+# What you can do. Main features and purpose
 
-ggplot(data = data.frame(x = c(1,2,3), y = c(4,8,6)), 
-       aes(x = x, y = y)) + 
-  
-  geom_point() + 
-  geom_step()
-```
+# Data Sources 
+
+# Data Refresh Schedule
+
+# 

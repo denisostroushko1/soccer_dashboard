@@ -1,6 +1,6 @@
 
 
-
+source("keys.R")
 source("Master Packages.R")
 source("Master Functions.R")
 
@@ -66,8 +66,8 @@ new_data <-
 refreshed_data <- rbind(older_data, new_data)
 write.csv(refreshed_data, "./dashboard_data.csv")
 
-Sys.setenv("AWS_ACCESS_KEY_ID" = "AKIAJ6746JOZ3BSWWIEA",
-           "AWS_SECRET_ACCESS_KEY" = "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",
+Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
+           "AWS_SECRET_ACCESS_KEY" = secret_key,
            "AWS_DEFAULT_REGION" = "us-east-2")
 
 # Set the name of the S3 bucket you want to upload the file to
