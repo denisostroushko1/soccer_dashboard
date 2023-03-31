@@ -2,6 +2,8 @@ Advanced Soccer Statistics
 ================
 Denis Ostroushko
 
+<!-- gfm -->
+
 # Product Title: Advanced player-level soccer data analysis
 
 I will be working on the final project by myself. I decided to collect,
@@ -12,10 +14,102 @@ application with player-level and team-level advanced statistics, in
 large provided by Opta, and available for websraping on
 [FBref.com](https://fbref.com/en/)
 
-# What you can do. Main features and purpose
+## Product type description
+
+I intend to use `shiny` and `shinydashboard` to make an elegant
+dashboard with data summary tables and visualizations, some
+non-supervised learning, and time-series-esque analysis methods to
+extract insights about player types (i.e. finding players who have
+similar play styles as underlined by their detailed metrics) and their
+performances.
+
+The goal of the dashboard is to allow a user to search the database of
+players from 12 selected European soccer competitions. Detailed data for
+these leagues and cups is available as early as 2017 for some leagues,
+and 2018 for all competitions.
+
+The data set contains just over 100 metrics that track and count various
+actions a player may do over the course of the game. The intention of
+the app is to give user an ability to select actions of interest, and
+get a ‘scouting’ report on the player, using a set of user-identified
+metrics. Additionally, the back-end code will filter through the data
+and tell user which actions the player is best at when compared to other
+players in the data base.
+
+Essentially, the goal of the product is to attempt and create a
+‘scouting’ tool using modern statistical analysis methods, and data
+visualization techniques.
 
 # Data Sources
 
-# Data Refresh Schedule
+[FBref.com](https://fbref.com/en/) is a very popular website which
+provides in depth match-by-match player-level performance data for each
+player. An example of one game can be viewed
+[here](https://fbref.com/en/matches/e62f6e78/Crystal-Palace-Arsenal-August-5-2022-Premier-League).
+I an grabbing data from tables listed under “Crystal Palace Player
+Stats” and “Arsenal Player Stats”.
 
-# 
+![Example of one tab of data from
+FBref](/Users/denisostroushko/Desktop/R/GitRepos/soccer_dashboard/Data%20sample.png)
+
+Note that there are 6 tabs for each match, and I am scraping all of
+those for the final data set. Some columns are repeated, so the final
+data set is “narrower” than the full score of available data on FBref.
+Data dictionary is available in the [github
+repositiory](https://github.com/denisostroushko1/soccer_dashboard/blob/main/FBref%20Advanced%20Soccer%20Data%20Disctionary.csv)
+for this project.
+
+While these data is quite detailed, it is, unfortunately, not the most
+advanced data available. However, these data can be obtained using `R`
+code and available packages, so it fits the purpose of the exercise.
+More advanced and detailed data, down to the one-record per play per
+player is available through many providers and APIs, which is a paid
+service.
+
+In order to store the data I set up an AWS S3 bucket. Size and amount of
+data I am working with qualifies for a free-tier storage plan.
+
+I plan to set up github automation to collect data every Tuesday, once
+the weekend games are finished.
+
+# Main features and interactivity
+
+Since I have the data for the past five season, for twelve competitions,
+for each player that featured in that span of games, I want to allowed
+the user to visualize and summarize every single bit of data. It was
+important for me to collect data such that players’ numbers are recorded
+to every game, in order to track players’ performance over time. It is
+common to see a player on a “hot streak”, and tracking their performance
+over time to compare against a longer term average can help us identify
+such “hot streaks”.
+
+I also want to be able to find players that are ‘similar’ in terms of
+their play styles. My speculation is that players with similar play
+styles should have similar underlying stats. For example, we can follow
+this procedure:
+
+1.  Identify top 10-15 attributes, or actions, a player does best (we
+    can give user an ability to do so interactively). Top attributes can
+    be identified using percentiles. For example, a player $A$ can be in
+    the 90th percentile of all players in terms of shots per 90 minutes.
+    Say, out of 100 possible actions that we track, this action is
+    ranked \#7 out of 100, i.e.  there are 6 other metrics, or
+    statistics, or numbers for actions, that are in 91st, or higher
+    quartiles across all recorded players.
+
+2.  Use only these 10-15 features to create a K-means clustering model,
+    and use the distance metric to find players that are similar to the
+    one we are interested in.
+
+3.  Instead of selecting top features we can give a user an option to
+    select features by hand from a list of 100 metrics.
+
+Additionally, I want to use a number of plotly graphs and datatable
+tables to summarize player performance and their historical statistics.
+
+# Final comments
+
+My biggest programming challenge of scraping the data is solved. Further
+challenges will arise if the HTML structure of the website changes, and
+I need to redesign some web scraping functions. Hopefully FBref do not
+indeed to do so in the next few months.
