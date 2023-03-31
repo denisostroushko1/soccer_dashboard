@@ -2,7 +2,7 @@
 title: "Advanced Soccer Statistics"
 author: "Denis Ostroushko"
 output:
-  format: gfm
+  format: html
 execute:
   echo: false
   warning: false
@@ -10,13 +10,39 @@ execute:
 
 ---
 
+<!-- gfm --> 
+
 # Product Title: Advanced player-level soccer data analysis
 
-# Product Description
+I will be working on the final project by myself. I decided to collect, store, and analyze some advanced soccer statistics. 
+The final product will involve two major components: automatically refreshing data with intermediate storage in AWS, and 
+an interactive ShinyDashboard application with player-level and team-level advanced statistics, in large provided by Opta, 
+and available for websraping on [FBref.com](https://fbref.com/en/)
 
-# What you can do. Main features and purpose
+
+## Product type description 
+
+I intend to use `shiny` and `shinydashboard` to make an elegant dashboard with data summary tables and visualizations, some
+non-supervised learning, and time-series-esque analysis methods to extract insights about player types (i.e. finding players who have similar play styles as underlined by their detailed metrics) and their performances. 
+
+The goal of the dashboard is to allow a user to search the database of players from 12 selected European soccer competitions. 
+Detailed data for these leagues and cups is available as early as 2017 for some leagues, and 2018 for all competitions. 
+
+The data set contains just over 100 metrics that track and count various actions a player may do over the course of the game. 
+The intention of the app is to give user an ability to select actions of interest, and get a 'scouting' report on the player,
+using a set of user-identified metrics. Additionally, the back-end code will filter through the data and tell user which 
+actions the player is best at when compared to other players in the data base. 
+
+Essentially, the goal of the product is to attempt and create a 'scouting' tool using modern statistical analysis methods, and 
+data visualization techniques. 
 
 # Data Sources 
+
+[FBref.com](https://fbref.com/en/) is a very popular website which provides in depth match-by-match player-level performance 
+data for each player. An example of one game can be viewed [here](https://fbref.com/en/matches/e62f6e78/Crystal-Palace-Arsenal-August-5-2022-Premier-League).
+I an grabbing data from tables listed under "Crystal Palace Player Stats" and "Arsenal Player Stats". 
+Note that there are 6 tabs for each match, and I am scraping all of those for the final data set. Some columns are repeated, 
+so the final data set is "narrower" than the full score of avaialble data on FBref. 
 
 # Data Refresh Schedule
 
