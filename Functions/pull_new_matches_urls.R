@@ -22,13 +22,30 @@ pull_new_matches_urls <- function(data_to_compare){
     "Fußball-Bundesliga "
     )
     
+  check2 <- 
+    case_when(
+    check == "EFL Championship " ~ "EFL Championship",
+    check == "Eredivisie " ~ "Eredivisie",
+    check == "La Liga " ~ "La Liga",
+    check == "Liga MX " ~ "Liga MX",
+    check == "Ligue 1 " ~ "Ligue 1",
+    check == "Major League Soccer " ~ "Major League Soccer",    
+    check == "Premier League " ~ "Premier League",
+    check == "Primeira Liga " ~ "Primeira Liga" ,
+    check == "Serie A " ~ "Serie A" ,
+    check == "UEFA Champions League " ~ "UEFA Champions League", 
+   # "UEFA Europa League"    ,       
+    check == "Campeonato Brasileiro Série A " ~ "Campeonato Brasileiro Série A",  
+    check == "Fußball-Bundesliga " ~ "Fußball-Bundesliga"
+    )
+    
   for(i in 1:length(check)){
     
     print(paste0("Getting new match links for ", check[i]))
     
-    year_end <- max(seasons[seasons$competition_name == check[i], ]$season_end_year)
+    year_end <- max(seasons[seasons$competition_name == check2[i], ]$season_end_year)
     history <- unique(seasons[seasons$season_end_year == year_end & 
-                          seasons$competition_name == check[i], ]$comp_url)[1]
+                          seasons$competition_name == check2[i], ]$comp_url)[1]
     
     list_of_fixtures <- 
       fb_match_urls(country = "", 

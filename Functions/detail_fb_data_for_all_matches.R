@@ -5,8 +5,7 @@ detail_fb_data_for_all_matches <-
   function(matches_urls, time_pause){
     
    res_store <- matrix(nrow = length(matches_urls) * 34 + 1 # add an extra row to just be safe 
-                        , 
-           ncol = 126)
+                        , ncol = 126)
     
     pb <- progress::progress_bar$new(total = length(matches_urls))
     
@@ -166,7 +165,7 @@ detail_fb_data_for_all_matches <-
     # part is column names right now 
     # part need to a prefix based on the column posiition 
     
-    secondary_col_names <- res_store[1,]
+    secondary_col_names <- res_store[min(which(res_store[,1] == "Player")),]
     
     #rename some potentially problematic columns
     for(i in c("#","Cmp%", "1/3", "Def 3rd", "Mid 3rd", "Att 3rd", "Tkl%", "Tkl+Int", "Succ%", "Tkld%", "Won%")){
@@ -189,6 +188,7 @@ detail_fb_data_for_all_matches <-
       secondary_col_names[which(secondary_col_names == i)] <- replace
     }
     
+    
     # now modify actual column names
     col_names_work <- 
       colnames(res_store)
@@ -208,44 +208,48 @@ detail_fb_data_for_all_matches <-
     final_colnames[123:126] <- c("team_name", "game_date", "fb_ref_match_link", "league_name") 
     # finally, make final prefixes for each set of columns, based on their origin
     
+    
     colnames(res_store) <- final_colnames
     
     res_store <- as.data.frame(res_store)
+    
     
     res_store <- res_store[-which(res_store[,1] == "Player"), ]
     res_store <- res_store[-which(is.na(res_store[,1])), ]
     
     res_store[,6:122] <- sapply(res_store[,6:122], FUN = as.numeric)
    
-    res_store$summary_age <- as.numeric(substr(res_store$summary_age, 1, 2)) 
+    
+    # res_store$summary_age <- as.numeric(substr(res_store$summary_age, 1, 2)) 
      
-    res_store <- 
-      res_store %>% 
-      select(
-        -summary_performance_ast, 
-        -summary_performance_crdy,
-        -summary_performance_crdr,
-        -summary_performance_touches,
-        -summary_performance_tkl,
-        -summary_performance_int,
-        -summary_performance_blocks,
-        -summary_expected_xag,
-        -summary_passes_cmp,
-        -summary_passes_att,
-        -summary_passes_comp_prct,
-        -summary_passes_prgp,
-        -summary_carries_carries,
-        -summary_carries_prgc,
-        -summary_take_ons_att,
-        -summary_take_ons_succ,
-        -pass_types_att, 
-        -pass_types_outcomes_cmp, 
-        -defensive_tkl_and_int, 
-        -misc_stat_performance_crs,
-        -misc_stat_performance_int,
-        -misc_stat_performance_tklw
-      )
-        
+    # 
+    # res_store <- 
+    #   res_store %>% 
+    #   select(
+    #     -summary_performance_ast, 
+    #     -summary_performance_crdy,
+    #     -summary_performance_crdr,
+    #     -summary_performance_touches,
+    #     -summary_performance_tkl,
+    #     -summary_performance_int,
+    #     -summary_performance_blocks,
+    #     -summary_expected_xag,
+    #     -summary_passes_cmp,
+    #     -summary_passes_att,
+    #     -summary_passes_comp_prct,
+    #     -summary_passes_prgp,
+    #     -summary_carries_carries,
+    #     -summary_carries_prgc,
+    #     -summary_take_ons_att,
+    #     -summary_take_ons_succ,
+    #     -pass_types_att, 
+    #     -pass_types_outcomes_cmp, 
+    #     -defensive_tkl_and_int, 
+    #     -misc_stat_performance_crs,
+    #     -misc_stat_performance_int,
+    #     -misc_stat_performance_tklw
+    #   )
+    #     
     return(res_store)
   }
 

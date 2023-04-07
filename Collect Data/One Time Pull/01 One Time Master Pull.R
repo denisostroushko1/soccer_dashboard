@@ -52,22 +52,45 @@ data_all$league <-
            
        ))
 
-nrow(data_all)
 
-write.csv(data_all, "./Collect Data/One Time Pull/dashboard_data.csv")
+########################
+# TESTING THE BEST WAY TO STORE THE DATA: 
+###     GOAL: FASTEST LLOAD TIME OF THE DASHBOARD
+###     TEST THE FOLLOWING COMBOS: 
+#####       CSV and FEATEHR 
+#####       ZIPED AND NON-ZIPPED 
+#####       IN GOOGLE DRIVE AND IN AWS 
 
-# uplaod to AWS 
-Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
-           "AWS_SECRET_ACCESS_KEY" = secret_key,
-           "AWS_DEFAULT_REGION" = "us-east-2")
 
-# Set the name of the S3 bucket you want to upload the file to
-bucket_name <- "shiny-soccer-data"
+### Step 1: create csv file: 
+write.csv(data_all, "dashboard_data.csv")
+### Step 2: zip file
+zip(zipfile = "dashboard_data_csv_zip", files = "dashboard_data.csv")
 
-# Set the name you want to give the file in the S3 bucket
-s3_file_name <- "dashboard_data.csv"
-
-# Upload the file to S3
-put_object(file = "./Collect Data/One Time Pull/dashboard_data.csv", 
-           object = s3_file_name,
-           bucket = bucket_name)
+# ### Step 3: Upload
+#   ### TO AWS, zipped and original 
+#   Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
+#              "AWS_SECRET_ACCESS_KEY" = secret_key,
+#              "AWS_DEFAULT_REGION" = "us-east-2")
+#   
+#   bucket_name <- "shiny-soccer-data"
+#   s3_file_name <- "dashboard_data.csv"
+#   put_object(file = "dashboard_data.csv",  object = s3_file_name, bucket = bucket_name)
+#   
+#   s3_file_name <- "dashboard_data_csv_zip.zip"
+#   put_object(file = "dashboard_data_csv_zip.zip",  object = s3_file_name, bucket = bucket_name)
+  
+  ### TO GOOGLE DRIVE, zipped and original 
+      # upload of csv file to google drive is impossible, file is too large or soemthing 
+  my_path = "https://drive.google.com/drive/u/0/folders/1NC_LZUQXJSr4f8_4HYPgE9zZR50j1AJC"
+  soccer_df <- 
+    drive_put(
+      media = "dashboard_data_csv_zip.zip", 
+      path = my_path,
+      name = "dashboard_data_csv_zip.zip"
+      )
+  soccer_df %>% drive_share_anyone()
+  
+## clean up repository once files are uploaded
+unlink('dashboard_data_csv_zip.zip')
+unlink('dashboard_data.csv')
