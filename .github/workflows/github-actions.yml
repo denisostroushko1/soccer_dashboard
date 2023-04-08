@@ -41,7 +41,7 @@ jobs:
                any::tictoc
 
       - name: Run R script
-        run: Rscript Collect Data/Update Data/Refresh Data Pull.R
+        run: Rscript Collect\ Data/Update\ Data/Refresh\ Data\ Pull.R
 
       - name: Setup git config
         run: |
