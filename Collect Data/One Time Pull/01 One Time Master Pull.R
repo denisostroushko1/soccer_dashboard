@@ -1,5 +1,7 @@
 
 source('keys.R')
+source("Master Packages.R")
+source("Master Functions.R")
 
 prefix <- './Collect Data/One Time Pull/'
 
@@ -67,30 +69,35 @@ write.csv(data_all, "dashboard_data.csv")
 ### Step 2: zip file
 zip(zipfile = "dashboard_data_csv_zip", files = "dashboard_data.csv")
 
-# ### Step 3: Upload
-#   ### TO AWS, zipped and original 
-#   Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
-#              "AWS_SECRET_ACCESS_KEY" = secret_key,
-#              "AWS_DEFAULT_REGION" = "us-east-2")
-#   
-#   bucket_name <- "shiny-soccer-data"
-#   s3_file_name <- "dashboard_data.csv"
-#   put_object(file = "dashboard_data.csv",  object = s3_file_name, bucket = bucket_name)
-#   
-#   s3_file_name <- "dashboard_data_csv_zip.zip"
-#   put_object(file = "dashboard_data_csv_zip.zip",  object = s3_file_name, bucket = bucket_name)
-  
   ### TO GOOGLE DRIVE, zipped and original 
-      # upload of csv file to google drive is impossible, file is too large or soemthing 
-  my_path = "https://drive.google.com/drive/u/0/folders/1NC_LZUQXJSr4f8_4HYPgE9zZR50j1AJC"
+      # upload of csv file to google drive is impossible, file is too large or soemthing
   soccer_df <- 
     drive_put(
       media = "dashboard_data_csv_zip.zip", 
-      path = my_path,
+      path = drive_my_path,
       name = "dashboard_data_csv_zip.zip"
       )
   soccer_df %>% drive_share_anyone()
   
+  # save links for the more efficient update of the data 
+  data_all %>% 
+    select(fb_ref_match_link) %>% 
+    unique() -> fb_links
+  
+  write.csv(fb_links, "already_used_links.csv")
+  zip(zipfile = "already_used_links_zip", files = "already_used_links.csv")
+  
+  links_df <- 
+    drive_put(
+      media = "already_used_links_zip.zip", 
+      path = drive_my_path,
+      name = "already_used_links_zip.zip"
+      )
+  links_df %>% drive_share_anyone()
+  
+  # save 
 ## clean up repository once files are uploaded
 unlink('dashboard_data_csv_zip.zip')
 unlink('dashboard_data.csv')
+unlink('already_used_links_zip.zip')
+unlink('already_used_links.csv')
