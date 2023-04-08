@@ -39,15 +39,11 @@ jobs:
                any::xml2
                any::worldfootballR
                any::tictoc
-      - name: Download files from Google Drive
-        run: |
-          wget -O data.zip "${{ secrets.GOOGLE_DRIVE_LINK }}"
-          unzip data.zip
-            - name: Run R script
-            
+               
+     - name: Run R script
         run: Rscript Collect\ Data/Update\ Data/Refresh\ Data\ Pull.R
 
-      - name: Setup git config
+    - name: Setup git config
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "<>"
