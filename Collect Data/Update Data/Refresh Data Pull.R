@@ -119,7 +119,6 @@ if(length(links_in_upate) != 0){
   ### Step 2: zip file
   zip(zipfile = "dashboard_data_csv_zip", files = "dashboard_data.csv")
   
-  drive_deauth()
   soccer_df <- 
     drive_put(
       media = "dashboard_data_csv_zip.zip", 
