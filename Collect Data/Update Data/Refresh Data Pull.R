@@ -7,13 +7,11 @@ source("Master Functions.R")
 
 #####
 #   1) downlaod zip from AWS, both files here now! 
-  
-        s3_file_name = 'dashboard_data_csv_zip.zip'
-        bucket_name = "shiny-soccer-data"
         
+        bucket_name = 'shiny-soccer-data'
         Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
                    "AWS_SECRET_ACCESS_KEY" = secret_key,
-                   "AWS_DEFAULT_REGION" = bucket_name)
+                   "AWS_DEFAULT_REGION" = 'us-east-2')
     
         tempfile <- tempfile()  
         save_object(object = "s3://shiny-soccer-data/dashboard_data_csv_zip.zip", file = tempfile)
@@ -37,21 +35,26 @@ source("Master Functions.R")
         old_links <- read_csv("already_used_links.csv")
         
         unlink('already_used_links.csv')
-        unlink('dashboard_data_csv_zip.zip')
+        unlink('already_used_links_zip.zip')
 #########################################################
 
 # test the function 
 links_in_upate <- pull_new_matches_urls(data_to_compare = old_links)
 
       ## save down links we just pulled 
-      all_links <- rbind(old_links[,-1], data.frame(fb_ref_match_link = links_in_upate))
+      all_links <- 
+        rbind(old_links[,-1], data.frame(fb_ref_match_link = links_in_upate)) %>% 
+        unique()
+      
       write.csv(all_links, "already_used_links.csv")
       zip(zipfile = "already_used_links_zip", files = "already_used_links.csv")
       
       put_object(file = "already_used_links_zip.zip", 
                  object = "already_used_links_zip.zip",
                  bucket = bucket_name)
-    
+  
+      unlink('already_used_links.csv')
+      unlink('already_used_links_zip.zip')
       
 ##############
       # start pulling data 
@@ -123,13 +126,9 @@ if(length(links_in_upate) != 0){
   ### Step 2: zip file
   zip(zipfile = "dashboard_data_csv_zip", files = "dashboard_data.csv")
   
-  soccer_df <- 
-    drive_put(
-      media = "dashboard_data_csv_zip.zip", 
-      path = drive_my_path,
-      name = "dashboard_data_csv_zip.zip"
-      )
-  soccer_df %>% drive_share_anyone()
+  put_object(file = "dashboard_data_csv_zip.zip", 
+                 object = "dashboard_data_csv_zip.zip",
+                 bucket = bucket_name)
   
   ## clean up repository once files are uploaded
   unlink('dashboard_data_csv_zip.zip')
