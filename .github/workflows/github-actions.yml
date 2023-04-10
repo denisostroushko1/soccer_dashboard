@@ -46,6 +46,7 @@ jobs:
               any::shinyjs
               any::DT
               any::feather
+              any::secret
                
       - name: Retrieve secrets
         run: |
