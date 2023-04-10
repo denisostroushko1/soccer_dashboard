@@ -11,7 +11,7 @@ source("Master Functions.R")
         bucket_name = 'shiny-soccer-data'
         Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
                    "AWS_SECRET_ACCESS_KEY" = secret_key,
-                   "AWS_DEFAULT_REGION" = 'us-east-2')
+                   "AWS_DEFAULT_REGION" = aws_region)
     
         tempfile <- tempfile()  
         save_object(object = "s3://shiny-soccer-data/dashboard_data_csv_zip.zip", file = tempfile)
@@ -83,6 +83,18 @@ if(length(links_in_upate) != 0){
       )
   
   ####### need to replace this such taht I do not rely on someone's repo
+  
+        file_name <- "fixtures_zip.zip" # Replace with the file name of the zipped CSV file
+        
+        tempfile <- tempfile()  
+        save_object(object = "s3://shiny-soccer-data/fixtures_zip.zip", file = tempfile)
+        zipped <- unzip(tempfile)
+       
+        seasons <- read_csv("seasons_and_fixtures.csv")
+        
+        unlink('seasons_and_fixtures.csv')
+        unlink('fixtures_zip.zip')
+  
   seasons <- 
     read.csv("https://raw.githubusercontent.com/JaseZiv/worldfootballR_data/master/raw-data/all_leages_and_cups/all_competitions.csv", 
     stringsAsFactors = F)

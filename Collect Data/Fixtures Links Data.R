@@ -211,6 +211,7 @@ final_df2 <- final_df2 %>% filter(end_year >= 2017)
 
 final_df2 <- final_df2 %>% arrange(comp, end_year) %>% select(-true_yr)
 
+colnames(final_df2) <- c('competition_name', 'season_end_year', 'fixtures_url')
   
   write.csv(final_df2, "seasons_and_fixtures.csv")
   ### Step 2: zip file
