@@ -38,7 +38,13 @@ jobs:
                any::tictoc
                
       - name: Run R script
-        run: Rscript Collect\ Data/Update\ Data/Refresh\ Data\ Pull.R
+        env:
+          access_key: ${{ secrets.ACCESS_KEY }}
+          secret_key: ${{ secrets.SECRET_KEY }}
+          bucket_name: ${{ secrets.BUCKET_NAME }}
+          aws_region: ${{ secrets.REGION }}
+          
+        run: Rscript Collect\ Data/Update\ Data/Refresh\ Data\ Pull.R $access_key $secret_key $bucket_name $aws_region
 
       - name: Setup git config
         run: |
