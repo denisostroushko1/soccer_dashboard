@@ -5,10 +5,10 @@ account: coingalaxy
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 8809138
-bundleId: 7071692
+bundleId: 7071845
 url: https://kexite.shinyapps.io/soccer_dashboard/
-when: 1681147207.17172
-lastSyncTime: 1681147207.17174
+when: 1681149864.17554
+lastSyncTime: 1681149864.17556
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: dashboard_data.csv

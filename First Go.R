@@ -2,31 +2,31 @@
 
 rm(list = ls())
 
-#############
-# allow app to laod for up to 3 minutes 
-############
-options(shiny.workerEnv = list(workerTimeout = 180))
-###########
-
+# 
 source("keys.R")
 source("Master Packages.R")
 source("Master Functions.R")
+# 
+# Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
+#            "AWS_SECRET_ACCESS_KEY" = secret_key,
+#            "AWS_DEFAULT_REGION" = aws_region)
+# 
+# tempfile <- tempfile()  
+# save_object(object = "s3://shiny-soccer-data/dashboard_data_csv_zip.zip", file = tempfile)
+# zipped <- unzip(tempfile)
+# dash_df <- read_csv("dashboard_data.csv", show_col_types = FALSE)[,-1]
 
-Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
-           "AWS_SECRET_ACCESS_KEY" = secret_key,
-           "AWS_DEFAULT_REGION" = aws_region)
+# dash_df <- read_csv("dashboard_data.csv", show_col_types = FALSE)[,-1]
 
-tempfile <- tempfile()  
-save_object(object = "s3://shiny-soccer-data/dashboard_data_csv_zip.zip", file = tempfile)
-zipped <- unzip(tempfile)
-dash_df <- read_csv("dashboard_data.csv", show_col_types = FALSE)[,-1]
-
+dash_df <- read_feather('dash_df.fthr')
 
 ########################################################################################################################
 ########################################################################################################################
 
 server_side <- 
   function(input, output){
+    
+    output$just_test <- renderTable(head(dash_df[,1:10]))
     
   }
 
@@ -48,7 +48,8 @@ body <-
   dashboardBody(
     tabItems(
       tabItem(tabName = "intro", 
-              fluidRow("Introduction")
+              fluidRow("Introduction", 
+                       tableOutput('just_test'))
               ),
       tabItem(tabName = "data_dict", 
               fluidRow("Data Dictionary")
