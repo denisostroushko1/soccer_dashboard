@@ -12,6 +12,8 @@ execute:
 
 <!-- gfm --> 
 
+Last successfull data update: `r Sys.time()`
+
 # Product Link
 
 [Access work-in-progress here](https://kexite.shinyapps.io/soccer_dashboard/)
