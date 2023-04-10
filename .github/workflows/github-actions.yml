@@ -48,23 +48,12 @@ jobs:
               any::feather
               any::secret
                
-      - name: Retrieve secrets
-        run: |
-          echo 'access_key <- "${{ secrets.ACCESS_KEY }}"' > secrets.R
-          echo 'secret_key <- "${{ secrets.SECRET_KEY }}"' >> secrets.R
-          echo 'aws_region <- "${{ secrets.REGION }}"' >> secrets.R
-          echo 'bucket_name <- "${{ secrets.BUCKET_NAME }}"' >> secrets.R
       - name: Execute R Script
         env:
-            AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY }}
-            AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_KEY }}
-            AWS_DEFAULT_REGION: ${{ secrets.REGION }}
+            access_key: ${{ secrets.ACCESS_KEY }}
+            secret_key: ${{ secrets.SECRET_KEY }}
+            aws_region: ${{ secrets.REGION }}
         run: |
-            source("secrets.R")
-            # Your R script that requires AWS access
-            Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
-                       "AWS_SECRET_ACCESS_KEY" = secret_key,
-                       "AWS_DEFAULT_REGION" = aws_region)
             Rscript Collect\ Data/Update\ Data/Refresh\ Data\ Pull.R
           
       - name: Setup git config
