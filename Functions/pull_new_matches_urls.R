@@ -2,9 +2,10 @@
 pull_new_matches_urls <- function(data_to_compare){
   final <- c()
   
-    Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
-                   "AWS_SECRET_ACCESS_KEY" = secret_key,
-                   "AWS_DEFAULT_REGION" = 'us-east-2')
+        Sys.setenv("AWS_ACCESS_KEY_ID" = Sys.getenv("access_key"),
+                   "AWS_SECRET_ACCESS_KEY" = Sys.getenv("secret_key"), 
+                   "AWS_DEFAULT_REGION" =  Sys.getenv("aws_region"))
+    
     
         file_name <- "fixtures_zip.zip" # Replace with the file name of the zipped CSV file
         

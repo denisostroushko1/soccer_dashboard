@@ -50,7 +50,7 @@ links_in_upate <- pull_new_matches_urls(data_to_compare = old_links)
       
       put_object(file = "already_used_links_zip.zip", 
                  object = "already_used_links_zip.zip",
-                 bucket = bucket_name)
+                 bucket = Sys.getenv("bucket_name"))
   
       unlink('already_used_links.csv')
       unlink('already_used_links_zip.zip')
@@ -138,7 +138,7 @@ if(length(links_in_upate) != 0){
   
   put_object(file = "dashboard_data_csv_zip.zip", 
                  object = "dashboard_data_csv_zip.zip",
-                 bucket = bucket_name)
+                 bucket = Sys.getenv("bucket_name"))
   
   ## clean up repository once files are uploaded
   unlink('dashboard_data_csv_zip.zip')

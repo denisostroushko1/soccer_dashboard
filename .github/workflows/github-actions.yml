@@ -53,6 +53,7 @@ jobs:
             access_key: ${{ secrets.ACCESS_KEY }}
             secret_key: ${{ secrets.SECRET_KEY }}
             aws_region: ${{ secrets.REGION }}
+            bucket_name: ${{secrets.BUCKET_NAME}}
         run: |
             Rscript Collect\ Data/Update\ Data/Refresh\ Data\ Pull.R
           
