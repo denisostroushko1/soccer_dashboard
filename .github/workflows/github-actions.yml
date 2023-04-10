@@ -27,15 +27,25 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
             packages:
-               any::rmarkdown
-               any::jsonlite
-               any::readr
-               any::tidyverse
-               any::googledrive
-               any::rvest
-               any::xml2
-               any::worldfootballR
-               any::tictoc
+              any::tidyverse
+              any::plotly
+              any::knitr
+              any::kableExtra
+              any::rvest
+              any::xml2
+              any::worldfootballR
+              any::googledrive
+              any::googleAuthR
+              any::tictoc
+              any::aws.s3
+              any::rlang
+              any::data.table
+              any::shinythemes
+              any::shiny
+              any::shinydashboard
+              any::shinyjs
+              any::DT
+              any::feather
                
       - name: Run R script
         env:
