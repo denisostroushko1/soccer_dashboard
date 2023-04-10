@@ -71,14 +71,16 @@ zip(zipfile = "dashboard_data_csv_zip", files = "dashboard_data.csv")
 
   ### TO GOOGLE DRIVE, zipped and original 
       # upload of csv file to google drive is impossible, file is too large or soemthing
-  soccer_df <- 
-    drive_put(
-      media = "dashboard_data_csv_zip.zip", 
-      path = drive_my_path,
-      name = "dashboard_data_csv_zip.zip"
-      )
-  soccer_df %>% drive_share_anyone()
+  bucket_name = "shiny-soccer-data"
   
+  Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
+             "AWS_SECRET_ACCESS_KEY" = secret_key,
+             "AWS_DEFAULT_REGION" = bucket_name)
+  
+  put_object(file = "dashboard_data_csv_zip.zip", 
+             object = "dashboard_data_csv_zip.zip",
+             bucket = bucket_name)
+
   # save links for the more efficient update of the data 
   data_all %>% 
     select(fb_ref_match_link) %>% 
@@ -87,13 +89,9 @@ zip(zipfile = "dashboard_data_csv_zip", files = "dashboard_data.csv")
   write.csv(fb_links, "already_used_links.csv")
   zip(zipfile = "already_used_links_zip", files = "already_used_links.csv")
   
-  links_df <- 
-    drive_put(
-      media = "already_used_links_zip.zip", 
-      path = drive_my_path,
-      name = "already_used_links_zip.zip"
-      )
-  links_df %>% drive_share_anyone()
+  put_object(file = "already_used_links_zip.zip", 
+             object = "already_used_links_zip.zip",
+             bucket = bucket_name)
   
   # save 
 ## clean up repository once files are uploaded
