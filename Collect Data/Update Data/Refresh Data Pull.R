@@ -8,9 +8,9 @@ source("Master Functions.R")
 #####
 #   1) downlaod zip from AWS, both files here now! 
         
-        Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
-                   "AWS_SECRET_ACCESS_KEY" = secret_key,
-                   "AWS_DEFAULT_REGION" = aws_region)
+        Sys.setenv("AWS_ACCESS_KEY_ID" = Sys.getenv("access_key"),
+                   "AWS_SECRET_ACCESS_KEY" = Sys.getenv("secret_key"), 
+                   "AWS_DEFAULT_REGION" =  Sys.getenv("aws_region"))
     
         tempfile <- tempfile()  
         save_object(object = "s3://shiny-soccer-data/dashboard_data_csv_zip.zip", file = tempfile)
