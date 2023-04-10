@@ -56,11 +56,18 @@ jobs:
             bucket_name: ${{secrets.BUCKET_NAME}}
         run: |
             Rscript Collect\ Data/Update\ Data/Refresh\ Data\ Pull.R
+      
+      - name: Render document
+        uses: quarto-dev/quarto-actions/render@v2
+        with:
+          to: gfm
+          path: README.qmd
           
       - name: Setup git config
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "<>"
+          
       - name: Commit
         run: |
           git add .
