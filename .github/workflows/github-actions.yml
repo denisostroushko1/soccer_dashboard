@@ -50,18 +50,17 @@ jobs:
                
       - name: Retrieve secrets
         run: |
-          echo "${{ secrets.ACCESS_KEY }}" > secrets.R
-          echo "${{ secrets.SECRET_KEY }}" >> secrets.R
-          echo "${{ secrets.BUCKET_NAME }}" >> secrets.R
-          echo "${{ secrets.REGION }}" >> secrets.R
+          echo '${{ secrets.ACCESS_KEY }}' > secrets.R
+          echo '${{ secrets.SECRET_KEY }}' >> secrets.R
+          echo '${{ secrets.BUCKET_NAME }}' >> secrets.R
+          echo '${{ secrets.REGION }}' >> secrets.R
 
       - name: Run R script
         run: |
-          # Read secrets file and set environment variables
-          source("secrets.R")
-          Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
-                     "AWS_SECRET_ACCESS_KEY" = secret_key,
-                     "AWS_DEFAULT_REGION" = aws_region)
+          source('secrets.R')
+          Sys.setenv('AWS_ACCESS_KEY_ID' = access_key,
+                     'AWS_SECRET_ACCESS_KEY' = secret_key,
+                     'AWS_DEFAULT_REGION' = aws_region)
           
           # Run R script with environment variables
           Rscript Collect\ Data/Update\ Data/Refresh\ Data\ Pull.R
