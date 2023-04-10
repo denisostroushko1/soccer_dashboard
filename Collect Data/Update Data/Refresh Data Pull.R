@@ -1,5 +1,4 @@
 
-
 rm(list = ls())
 
 source("keys.R")
@@ -7,28 +6,36 @@ source("Master Packages.R")
 source("Master Functions.R")
 
 #####
-#   1) download zip fromd rive, unpack and modify the data frame
-        drive_deauth()
-        file_name <- "dashboard_data_csv_zip.zip" # Replace with the file name of the zipped CSV file
-        drive_download(as_id(drive_link), path = file_name, overwrite = T)
+#   1) downlaod zip from AWS, both files here now! 
+  
+        s3_file_name = 'dashboard_data_csv_zip.zip'
+        bucket_name = "shiny-soccer-data"
+        
+        Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
+                   "AWS_SECRET_ACCESS_KEY" = secret_key,
+                   "AWS_DEFAULT_REGION" = bucket_name)
     
-        unzip(file_name)
-    
+        tempfile <- tempfile()  
+        save_object(object = "s3://shiny-soccer-data/dashboard_data_csv_zip.zip", file = tempfile)
+        zipped <- unzip(tempfile)
         older_data <- read_csv("dashboard_data.csv")
-    
+      
         colnames_to_remove <- colnames(older_data)[grep("[1-9]", colnames(older_data))]
         
         older_data <- older_data[, -c(which(colnames(older_data) %in% colnames_to_remove))]
         
         unlink('dashboard_data.csv')
         unlink('dashboard_data_csv_zip.zip')
+        
 #   2) download file with already used match links 
         file_name <- "already_used_links_zip.zip" # Replace with the file name of the zipped CSV file
-        drive_download(as_id(drive_old_match_link), path = file_name, overwrite = T)
-    
-        unzip(file_name)
-    
+        
+        tempfile <- tempfile()  
+        save_object(object = "s3://shiny-soccer-data/already_used_links_zip.zip", file = tempfile)
+        zipped <- unzip(tempfile)
+       
         old_links <- read_csv("already_used_links.csv")
+        
         unlink('already_used_links.csv')
         unlink('dashboard_data_csv_zip.zip')
 #########################################################
@@ -41,13 +48,10 @@ links_in_upate <- pull_new_matches_urls(data_to_compare = old_links)
       write.csv(all_links, "already_used_links.csv")
       zip(zipfile = "already_used_links_zip", files = "already_used_links.csv")
       
-      links_df <- 
-        drive_put(
-          media = "already_used_links_zip.zip", 
-          path = drive_my_path,
-          name = "already_used_links_zip.zip"
-          )
-      links_df %>% drive_share_anyone()
+      put_object(file = "already_used_links_zip.zip", 
+                 object = "already_used_links_zip.zip",
+                 bucket = bucket_name)
+    
       
 ##############
       # start pulling data 
@@ -132,3 +136,13 @@ if(length(links_in_upate) != 0){
   unlink('dashboard_data.csv')
 
 }
+      
+      
+      
+      
+         
+            
+            
+            
+            
+            
