@@ -47,15 +47,24 @@ jobs:
               any::DT
               any::feather
                
-      - name: Run R script
-        env:
-          access_key: ${{ secrets.ACCESS_KEY }}
-          secret_key: ${{ secrets.SECRET_KEY }}
-          bucket_name: ${{ secrets.BUCKET_NAME }}
-          aws_region: ${{ secrets.REGION }}
-          
-        run: Rscript Collect\ Data/Update\ Data/Refresh\ Data\ Pull.R $access_key $secret_key $bucket_name $aws_region
+      - name: Retrieve secrets
+        run: |
+          echo "${{ secrets.ACCESS_KEY }}" > secrets.R
+          echo "${{ secrets.SECRET_KEY }}" >> secrets.R
+          echo "${{ secrets.BUCKET_NAME }}" >> secrets.R
+          echo "${{ secrets.REGION }}" >> secrets.R
 
+      - name: Run R script
+        run: |
+          # Read secrets file and set environment variables
+          source("secrets.R")
+          Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
+                     "AWS_SECRET_ACCESS_KEY" = secret_key,
+                     "AWS_DEFAULT_REGION" = aws_region)
+          
+          # Run R script with environment variables
+          Rscript Collect\ Data/Update\ Data/Refresh\ Data\ Pull.R
+          
       - name: Setup git config
         run: |
           git config user.name "GitHub Actions Bot"
