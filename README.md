@@ -4,6 +4,11 @@ Denis Ostroushko
 
 <!-- gfm -->
 
+# Product Link
+
+[Acess work-in-progress
+here](https://kexite.shinyapps.io/soccer_dashboard/)
+
 # Product Title: Advanced player-level soccer data analysis
 
 I will be working on the final project by myself. I decided to collect,

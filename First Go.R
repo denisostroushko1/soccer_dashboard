@@ -2,6 +2,12 @@
 
 rm(list = ls())
 
+#############
+# allow app to laod for up to 3 minutes 
+############
+options(shiny.workerEnv = list(workerTimeout = 180))
+###########
+
 source("keys.R")
 source("Master Packages.R")
 source("Master Functions.R")
@@ -19,24 +25,14 @@ dash_df <- read_csv("dashboard_data.csv")
 ########################################################################################################################
 
 server_side <- 
-  function(input, output){ }
+  function(input, output){
+    
+  }
 
 sidebar <- 
   dashboardSidebar(
     width = 300, 
     sidebarMenu(
-
-
-    #  dateInput("min_date", label = "Select Start Date:", value = (max(master_data$datetime)-15))
-      
-  #    ,dateInput("max_date", label = "Select End Date:", value = (max(master_data$datetime)))
-      
-  #    ,selectizeInput("assets", "Symbol Search: ", unique(master_data$asset))
-      
-#      ,sliderInput("cons_day_slider", "Select Cons. Days Highlight Cutoff", min = 1, max = 20, value = 5, step = 1)
-      
-#      ,sliderInput("size_dots_slider", "Select Size of Highlight Dots", min = 3, max = 20, value = 8, step = 1)
-      
       menuItem("Introduction", tabName = "intro")
       ,menuItem("Data Dictionary", tabName = "data_dict")
       ,menuItem("Player Profile", tabName = "player_profile")
