@@ -8,7 +8,6 @@ source("Master Functions.R")
 #####
 #   1) downlaod zip from AWS, both files here now! 
         
-        bucket_name = 'shiny-soccer-data'
         Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
                    "AWS_SECRET_ACCESS_KEY" = secret_key,
                    "AWS_DEFAULT_REGION" = aws_region)
@@ -91,30 +90,28 @@ if(length(links_in_upate) != 0){
         zipped <- unzip(tempfile)
        
         seasons <- read_csv("seasons_and_fixtures.csv")
+        seasons <- seasons[,-1]
         
         unlink('seasons_and_fixtures.csv')
         unlink('fixtures_zip.zip')
-  
-  seasons <- 
-    read.csv("https://raw.githubusercontent.com/JaseZiv/worldfootballR_data/master/raw-data/all_leages_and_cups/all_competitions.csv", 
-    stringsAsFactors = F)
+
   #######
   
-  seasons_for_df <- seasons[seasons$competition_name %in% list_of_leagues_we_update, ] %>% 
-    group_by(competition_name) %>% 
-    summarize(season_end_year = max(season_end_year)) %>% 
-    
-    inner_join(
-      seasons %>% select(competition_name, season_end_year, seasons), 
-      by = c("competition_name", "season_end_year")
-    ) %>% 
-    
-    rename(season = seasons, 
-           league_name = competition_name) %>% 
-    
-    unique() %>% 
-    
-    mutate(league_name = paste0(league_name, " "))
+        seasons_for_df <- seasons[seasons$competition_name %in% list_of_leagues_we_update, ] %>% 
+          group_by(competition_name) %>% 
+          summarize(season_end_year = max(season_end_year)) %>% 
+          
+          inner_join(
+            seasons %>% select(competition_name, season_end_year, season), 
+            by = c("competition_name", "season_end_year")
+          ) %>% 
+          
+          rename(
+                 league_name = competition_name) %>% 
+          
+          unique() %>% 
+          
+          mutate(league_name = paste0(league_name, " "))
   
   
   ##### final result
@@ -131,11 +128,12 @@ if(length(links_in_upate) != 0){
   # upload refreshed data now 
   
   refreshed_data <- rbind(older_data, new_data)
+  refreshed_data$season <- gsub("-", "/", refreshed_data$season)
+  
   
   ########### 
-  # SEND DATA TO GOOGLE DRIVE 
+  # SEND DATA TO AWS
   write.csv(refreshed_data, "dashboard_data.csv")
-  ### Step 2: zip file
   zip(zipfile = "dashboard_data_csv_zip", files = "dashboard_data.csv")
   
   put_object(file = "dashboard_data_csv_zip.zip", 
@@ -147,11 +145,6 @@ if(length(links_in_upate) != 0){
   unlink('dashboard_data.csv')
 
 }
-      
-      
-      
-      
-         
             
             
             

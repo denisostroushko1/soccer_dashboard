@@ -2,9 +2,21 @@
 pull_new_matches_urls <- function(data_to_compare){
   final <- c()
   
-  seasons <- 
-    read.csv("https://raw.githubusercontent.com/JaseZiv/worldfootballR_data/master/raw-data/all_leages_and_cups/all_competitions.csv", 
-    stringsAsFactors = F)
+    Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
+                   "AWS_SECRET_ACCESS_KEY" = secret_key,
+                   "AWS_DEFAULT_REGION" = 'us-east-2')
+    
+        file_name <- "fixtures_zip.zip" # Replace with the file name of the zipped CSV file
+        
+        tempfile <- tempfile()  
+        save_object(object = "s3://shiny-soccer-data/fixtures_zip.zip", file = tempfile)
+        zipped <- unzip(tempfile)
+       
+        seasons <- read_csv("seasons_and_fixtures.csv")
+        seasons <- seasons[,-1]
+        
+        unlink('seasons_and_fixtures.csv')
+        unlink('fixtures_zip.zip')
 
   check <- 
     c("EFL Championship ",
@@ -48,11 +60,14 @@ pull_new_matches_urls <- function(data_to_compare){
                           seasons$competition_name == check2[i], ]$comp_url)[1]
     
     list_of_fixtures <- 
-      fb_match_urls(country = "", 
-                    gender = "M", 
-                    season_end_year = year_end, 
-                    tier = "", 
-                    non_dom_league_url = history)
+      fb_match_urls_modified(
+        country = "", 
+        gender = "M", 
+        season_end_year = year_end, 
+        tier = "", 
+        non_dom_league_url = history, 
+        time_pause = 3, 
+        seasons_df= seasons) 
     
     
     final_list_league <- list_of_fixtures[!list_of_fixtures %in% data_to_compare$fb_ref_match_link]

@@ -46,7 +46,7 @@ link_list <- list()
       if(!"Country" %in% colnames(table_i)){table_i$Country <- ""}
       
       tables[i] %>% html_nodes("a") %>% html_attr("href") -> hrefs
-      hrefs <- paste0("https://fbref.com/", hrefs[which(str_detect(hrefs, pattern = ".*history*."))])
+      hrefs <- paste0("https://fbref.com", hrefs[which(str_detect(hrefs, pattern = ".*history*."))])
     
       table_i$link <- hrefs
       
@@ -95,12 +95,14 @@ final_df <-
   data.frame(
     comp = "", 
     end_year = NA, 
-    fixtrures_urls = ""
+    fixtrures_urls = "", 
+    comp_url = ""
   )
 
 for( i in 1:nrow(step_1)){
 
   competition <- step_1[i,]$`Competition Name`
+  hist_link <- step_1[i,]$link
   
   print(paste0("Collecting links for ", competition, ". This is iteration ", i, " of ", nrow(step_1)))
   
@@ -127,7 +129,7 @@ for( i in 1:nrow(step_1)){
   
   tables2[1] %>% html_nodes("a") %>% html_attr("href") %>% sort() -> hrefs
   
-  hrefs <- paste0("https://fbref.com/", 
+  hrefs <- paste0("https://fbref.com", 
                 hrefs[which(str_detect(hrefs, 
                                        pattern = 
                                          paste0('.*', paste0(competition2, "-Stats"),'*.')
@@ -171,6 +173,7 @@ for( i in 1:nrow(step_1)){
     rbind(final_df, 
           data.frame(
             comp = rep(competition, n_rows_expand), 
+            comp_url = rep(hist_link, n_rows_expand), 
             end_year = empty_years, 
             fixtrures_urls = empty_links
           )
@@ -211,8 +214,21 @@ final_df2 <- final_df2 %>% filter(end_year >= 2017)
 
 final_df2 <- final_df2 %>% arrange(comp, end_year) %>% select(-true_yr)
 
-colnames(final_df2) <- c('competition_name', 'season_end_year', 'fixtures_url')
+colnames(final_df2) <- c('competition_name', 'season_end_year', 'fixtures_url', "comp_url")
+
+final_df2$season <- 
+  with(final_df2, 
+       case_when(
+         competition_name %in% c("Major League Soccer", "Campeonato Brasileiro Série A" ) ~ as.character(season_end_year), 
+         TRUE ~ paste0(season_end_year - 1, "-", season_end_year)
+       )
+       )
   
+
+final_df2$country = "" 
+final_df2$gender = "M" 
+final_df2$tier = ""
+
   write.csv(final_df2, "seasons_and_fixtures.csv")
   ### Step 2: zip file
   zip(zipfile = "fixtures_zip.zip", files = "seasons_and_fixtures.csv")
