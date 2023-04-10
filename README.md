@@ -6,7 +6,7 @@ Denis Ostroushko
 
 # Product Link
 
-[Acess work-in-progress
+[Access work-in-progress
 here](https://kexite.shinyapps.io/soccer_dashboard/)
 
 # Product Title: Advanced player-level soccer data analysis

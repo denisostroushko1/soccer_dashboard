@@ -19,7 +19,8 @@ Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
 tempfile <- tempfile()  
 save_object(object = "s3://shiny-soccer-data/dashboard_data_csv_zip.zip", file = tempfile)
 zipped <- unzip(tempfile)
-dash_df <- read_csv("dashboard_data.csv")
+dash_df <- read_csv("dashboard_data.csv", show_col_types = FALSE)[,-1]
+
 
 ########################################################################################################################
 ########################################################################################################################
