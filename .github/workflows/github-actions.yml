@@ -50,10 +50,10 @@ jobs:
                
       - name: Retrieve secrets
         run: |
-          echo ${{ secrets.ACCESS_KEY }} > secrets.R
-          echo ${{ secrets.SECRET_KEY }} >> secrets.R
-          echo ${{ secrets.BUCKET_NAME }} >> secrets.R
-          echo ${{ secrets.REGION }} >> secrets.R
+          echo 'access_key <- "${{ secrets.ACCESS_KEY }}"' > secrets.R
+          echo 'secret_key <- "${{ secrets.SECRET_KEY }}"' >> secrets.R
+          echo 'aws_region <- "${{ secrets.REGION }}"' >> secrets.R
+          echo 'bucket_name <- "${{ secrets.BUCKET_NAME }}"' >> secrets.R
       - name: Execute R Script
         env:
             AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY }}
