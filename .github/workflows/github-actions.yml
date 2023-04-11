@@ -58,9 +58,10 @@ jobs:
             secret_key: ${{ secrets.SECRET_KEY }}
             aws_region: ${{ secrets.REGION }}
             bucket_name: ${{secrets.BUCKET_NAME}}
-            SHINY_ACC_NAME: ${{secrets.SHINY_ACC_NAME}}
-            SHINY_SECRET_TOKEN: ${{secrets.SHINY_SECRET_TOKEN}}
-            SHINY_TOKEN: ${{secrets.SHINY_TOKEN}}
+            
+            shiny_acc: ${{secrets.SHINY_ACC_NAME}}
+            shiny_secret: ${{secrets.SHINY_SECRET_TOKEN}}
+            shiny_token: ${{secrets.SHINY_TOKEN}}
         run: |
             Rscript Collect\ Data/Update\ Data/Refresh\ Data\ Pull.R
             Rscript deploy.R

@@ -12,7 +12,7 @@ execute:
 
 <!-- gfm --> 
 
-Last successfull data update: `r format(Sys.time(), tz="America/Chicago")`
+Last successfull data update: `r paste0(format(Sys.time(), tz="America/Chicago"), " CST")`
 
 # Product Link
 
