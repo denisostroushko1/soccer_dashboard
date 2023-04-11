@@ -48,7 +48,7 @@ body <-
   dashboardBody(
     tabItems(
       tabItem(tabName = "intro", 
-              fluidRow("Introduction", 
+              fluidRow(paste("Introduction update: ", Sys.Date()), 
                        tableOutput('just_test'))
               ),
       tabItem(tabName = "data_dict", 

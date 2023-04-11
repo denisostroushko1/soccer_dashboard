@@ -63,10 +63,11 @@ jobs:
             bucket_name: ${{secrets.BUCKET_NAME}}
         run: |
             Rscript Collect\ Data/Update\ Data/Refresh\ Data\ Pull.R
+            
       - name: Deploy to shinyapps.io
         uses: r-lib/shinyapps-deploy@v1
         with:
-          app_name: my-shiny-app
+          app_name: soccer_dashboard
           token: ${{ secrets.SHINY_TOKEN }}
           
       - name: Render document
