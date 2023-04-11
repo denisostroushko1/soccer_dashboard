@@ -57,7 +57,11 @@ links_in_upate <- pull_new_matches_urls(data_to_compare = old_links)
       
 ##############
       # start pulling data 
-if(length(links_in_upate) == 0){print("No new matches to update")}
+if(length(links_in_upate) == 0){
+  print("No new matches to update")
+  
+  write_feather(old_links, 'dash_df.fthr')
+  }
 
 if(length(links_in_upate) != 0){
   new_data <- detail_fb_data_for_all_matches(matches_urls = links_in_upate, time_pause = 5)
@@ -143,8 +147,11 @@ if(length(links_in_upate) != 0){
   ## clean up repository once files are uploaded
   unlink('dashboard_data_csv_zip.zip')
   unlink('dashboard_data.csv')
+  
+  write_feather(refreshed_data, 'dash_df.fthr')
 
 }
+
             
             
             

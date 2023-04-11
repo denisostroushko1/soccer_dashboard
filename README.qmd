@@ -12,7 +12,7 @@ execute:
 
 <!-- gfm --> 
 
-Last successfull data update: `r Sys.time()`
+Last successfull data update: `r format(Sys.time(), tz="America/Chicago")`
 
 # Product Link
 

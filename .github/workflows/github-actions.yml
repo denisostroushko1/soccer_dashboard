@@ -54,6 +54,7 @@ jobs:
               any::feather
               any::secret
               any::remotes
+              any::rsconnect
                
       - name: Execute R Script
         env:
@@ -61,14 +62,12 @@ jobs:
             secret_key: ${{ secrets.SECRET_KEY }}
             aws_region: ${{ secrets.REGION }}
             bucket_name: ${{secrets.BUCKET_NAME}}
+            SHINY_ACC_NAME: ${{secrets.SHINY_ACC_NAME}}
+            SHINY_SECRET_TOKEN: ${{secrets.SHINY_SECRET_TOKEN}}
+            SHINY_TOKEN: ${{secrets.SHINY_TOKEN}}
         run: |
             Rscript Collect\ Data/Update\ Data/Refresh\ Data\ Pull.R
-            
-      - name: Deploy to shinyapps.io
-        uses: r-lib/shinyapps-deploy@v1
-        with:
-          app_name: soccer_dashboard
-          token: ${{ secrets.SHINY_TOKEN }}
+            Rscript deploy.R
           
       - name: Render document
         uses: quarto-dev/quarto-actions/render@v2

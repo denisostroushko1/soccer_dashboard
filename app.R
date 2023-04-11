@@ -1,11 +1,8 @@
 
-
-rm(list = ls())
-
 # 
-source("keys.R")
+
 source("Master Packages.R")
-source("Master Functions.R")
+
 # 
 # Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
 #            "AWS_SECRET_ACCESS_KEY" = secret_key,
@@ -48,7 +45,7 @@ body <-
   dashboardBody(
     tabItems(
       tabItem(tabName = "intro", 
-              fluidRow(paste("Introduction update: ", Sys.Date()), 
+              fluidRow(paste("Introduction update: ", format(Sys.time(), tz="America/Chicago")), 
                        tableOutput('just_test'))
               ),
       tabItem(tabName = "data_dict", 
