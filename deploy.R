@@ -7,6 +7,5 @@
     # Deploy
     deployApp(appFiles = c("app.R", 'dash_df.fthr', "Master Packages.R"), 
               appName = 'soccer_dashboard', 
-              forceUpdate = T,
-              account = )
+              forceUpdate = T)
     
