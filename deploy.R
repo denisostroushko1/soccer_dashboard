@@ -8,7 +8,12 @@ source("Master Packages.R")
                    token = Sys.getenv("SHINY_TOKEN"),
                    secret = Sys.getenv("SHINY_SECRET_TOKEN"))
     # Deploy
+    print("Connect Successfull")
+    
     deployApp(appFiles = c("app.R", 'dash_df.fthr', "Master Packages.R"), 
               appName = 'soccer_dashboard', 
               forceUpdate = T)
+    
+    
+    print("App deployed")
     
