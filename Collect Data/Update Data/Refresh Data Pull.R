@@ -57,7 +57,7 @@ links_in_upate <- pull_new_matches_urls(data_to_compare = old_links)
       # start pulling data 
 if(length(links_in_upate) == 0){
   print("No new matches to update")
-  write_feather(old_links, 'dash_df.fthr')
+  write_feather(older_data, 'dash_df.fthr')
   if(file.exists('dash_df.fthr') == T){print("created feather file")}
   }
 
