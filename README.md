@@ -4,12 +4,17 @@ Denis Ostroushko
 
 <!-- gfm -->
 
-Last successfull data update: 2023-04-10 23:23:23 CST
+Last successfull data update: 2023-04-10 23:31:15 CST
 
 # Product Link
 
 [Access work-in-progress
 here](https://kexite.shinyapps.io/soccer_dashboard/)
+
+# Obvious Data Fixes:
+
+1.  Add match week as a variable. During the initial design I completely
+    forgot to include it…
 
 # Product Title: Advanced player-level soccer data analysis
 
