@@ -59,7 +59,7 @@ links_in_upate <- pull_new_matches_urls(data_to_compare = old_links)
       # start pulling data 
 if(length(links_in_upate) == 0){
   print("No new matches to update")
-  
+  print("Finishing writting of feather data file")
   write_feather(old_links, 'dash_df.fthr')
   }
 
@@ -148,6 +148,7 @@ if(length(links_in_upate) != 0){
   unlink('dashboard_data_csv_zip.zip')
   unlink('dashboard_data.csv')
   
+  print("Finishing writting of feather data file")
   write_feather(refreshed_data, 'dash_df.fthr')
 
 }
