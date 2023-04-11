@@ -18,6 +18,9 @@ Last successfull data update: `r paste0(format(Sys.time(), tz="America/Chicago")
 
 [Access work-in-progress here](https://kexite.shinyapps.io/soccer_dashboard/)
 
+# Obvious Data Fixes: 
+
+1. Add match week as a variable. During the initial design I completely forgot to include it...
 
 # Product Title: Advanced player-level soccer data analysis
 
