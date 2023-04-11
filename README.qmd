@@ -22,6 +22,9 @@ Last successfull data update: `r paste0(format(Sys.time(), tz="America/Chicago")
 
 1. Add match week as a variable. During the initial design I completely forgot to include it...
 
+2. Europa League and Conference League are not in the data, while UCL is... need to fix this issue, these are some of the best competiitons 
+to scout players 
+
 # Product Title: Advanced player-level soccer data analysis
 
 I will be working on the final project by myself. I decided to collect, store, and analyze some advanced soccer statistics. 
