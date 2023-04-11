@@ -4,7 +4,7 @@ Denis Ostroushko
 
 <!-- gfm -->
 
-Last successfull data update: 2023-04-11 03:57:17 CST
+Last successfull data update: 2023-04-11 07:58:36 CST
 
 # Product Link
 
@@ -15,6 +15,10 @@ here](https://kexite.shinyapps.io/soccer_dashboard/)
 
 1.  Add match week as a variable. During the initial design I completely
     forgot to include it…
+
+2.  Europa League and Conference League are not in the data, while UCL
+    is… need to fix this issue, these are some of the best competiitons
+    to scout players
 
 # Product Title: Advanced player-level soccer data analysis
 
