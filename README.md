@@ -4,7 +4,7 @@ Denis Ostroushko
 
 <!-- gfm -->
 
-Last successfull data update: 2023-04-11 19:36:30 CST
+Last successfull data update: 2023-04-12 19:39:19 CST
 
 # Product Link
 
