@@ -25,6 +25,8 @@ Last successfull data update: `r paste0(format(Sys.time(), tz="America/Chicago")
 2. Europa League and Conference League are not in the data, while UCL is... need to fix this issue, these are some of the best competiitons 
 to scout players 
 
+3. Add transfer/market values of players and their salaries 
+
 # Product Title: Advanced player-level soccer data analysis
 
 I will be working on the final project by myself. I decided to collect, store, and analyze some advanced soccer statistics. 
