@@ -4,7 +4,7 @@ Denis Ostroushko
 
 <!-- gfm -->
 
-Last successfull data update: 2023-04-13 19:39:35 CST
+Last successfull data update: 2023-04-14 18:39:24 CST
 
 # Product Link
 
@@ -19,6 +19,8 @@ here](https://kexite.shinyapps.io/soccer_dashboard/)
 2.  Europa League and Conference League are not in the data, while UCL
     is… need to fix this issue, these are some of the best competiitons
     to scout players
+
+3.  Add transfer/market values of players and their salaries
 
 # Product Title: Advanced player-level soccer data analysis
 
