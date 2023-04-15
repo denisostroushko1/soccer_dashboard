@@ -16,7 +16,11 @@ source("Master Packages.R")
 # dash_df <- read_csv("dashboard_data.csv", show_col_types = FALSE)[,-1]
 
 dash_df <- read_feather('dash_df.fthr')
-dash_df <- dash_df %>% filter(!league_name %in% c('UEFA Champions League'))
+dash_df <- dash_df %>% filter(!league_name %in% c('UEFA Champions League') & 
+                                seasons %in% c("2022", 
+                                               "2023", 
+                                               "2021/2022", 
+                                               "2022/2023"))
 
 ########################################################################################################################
 ########################################################################################################################
