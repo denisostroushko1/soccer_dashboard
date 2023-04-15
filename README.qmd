@@ -22,6 +22,8 @@ Last successfull data update: `r paste0(format(Sys.time(), tz="America/Chicago")
 
 1. Add match week as a variable. During the initial design I completely forgot to include it...
 
+1.1 Add opponents: currently it is unknown who the opponent on the day was... but the data is available. Will be added in version 2.0 
+
 2. Europa League and Conference League are not in the data, while UCL is... need to fix this issue, these are some of the best competiitons 
 to scout players 
 

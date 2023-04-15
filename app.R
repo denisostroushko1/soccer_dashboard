@@ -22,7 +22,7 @@ dash_df <- dash_df %>% filter(!league_name %in% c('UEFA Champions League'))
 ########################################################################################################################
 
 # FUNCTIONS 
-player_summary <- 
+player_profile_season_stat <- 
   function(LEAGUE, 
            SEASON, 
            SUMMARY_PLAYER){
@@ -56,6 +56,75 @@ player_summary <-
       kable_styling(bootstrap_options = "striped")
   }
 
+
+profile_plot_player_one_var <- 
+  function(
+    LEAGUE, 
+    SEASON, 
+    SUMMARY_PLAYER, 
+    VARIABLE, 
+    MA
+  ){
+    dash_df %>% filter(league_name == LEAGUE & 
+                        season == SEASON & 
+                        summary_player == SUMMARY_PLAYER) %>% 
+      arrange(game_date) %>% 
+      mutate(
+        game_in_seq = seq(1, to = nrow(dash_df %>% filter(league_name == LEAGUE & 
+                        season == SEASON & 
+                        summary_player == SUMMARY_PLAYER)), by = 1), 
+        
+        plot_var = !!sym(VARIABLE), 
+        ma = frollmean(!!sym(VARIABLE) , MA)
+      ) %>% 
+      
+      dplyr::select(league_name, season, summary_player, game_date, game_in_seq, plot_var, ma) -> plot_df
+
+    with(plot_df, 
+         plot_df %>% 
+          plot_ly() %>%
+    
+          add_trace(
+            type = 'scatter',
+            mode = 'markers+lines',
+            name = 'Observed Values',
+            opacity = 0.75, 
+            x = ~game_in_seq,
+            y = ~plot_var, 
+            
+            text = paste(
+              "Game Date:", game_date, 
+              "<br>Stat:", plot_var
+            ), 
+            hoverinfo = 'text'
+          ) %>% 
+           
+          add_trace(
+            type = 'scatter',
+            mode = 'markers+lines',
+            name = 'Moving Average',
+            opacity = 0.75,  
+            x = ~game_in_seq,
+            y = ~ma, 
+            
+            text = paste(
+              "Game Date:", game_date, 
+              "<br>Stat MA:", ma
+            ), 
+            hoverinfo = 'text'
+          ) %>% 
+           layout(yaxis = list(autotick = F, title = VARIABLE),
+                  xaxis = list(ticktext = ~paste(game_date), tickvals = ~paste(game_date)))
+    )
+  }
+
+top_stats_within_season_within_league <- 
+  function(
+    LEAGUE, 
+    SEASON, 
+    SUMMARY_PLAYER, 
+    TOP_VARS_N
+    )
 ########################################################################################################################
 ########################################################################################################################
 
@@ -74,13 +143,23 @@ output$display_players <-
 
 output$player_profile_season_stat <- 
   function(){
-    player_summary(
+    player_profile_season_stat(
       LEAGUE = input$league_of_player, 
       SEASON = input$select_season, 
       SUMMARY_PLAYER = input$player_typed_name
     )
     }
     
+output$profile_plot_player_one_var <- 
+  renderPlotly(
+    profile_plot_player_one_var(
+      LEAGUE = input$league_of_player, 
+      SEASON = input$select_season, 
+      SUMMARY_PLAYER = input$player_typed_name, 
+      VARIABLE = input$profile_plot_metric,
+      MA = input$games_to_average
+    )
+  )
   }
 
 sidebar <- 
@@ -113,20 +192,21 @@ body <-
                                    selectInput(inputId = 'league_of_player', 
                                                label = "Select League", 
                                                choices = sort(unique(dash_df$league_name)), 
-                                               selected = "Major League Soccer"),
+                                               selected = "Premier League"),
                                    
                                    ### need to select players based on the input of league
                                    ###    i.e. display players who are in the league 
                                    selectInput(inputId = 'select_season', 
                                                label = "Select a Season", 
                                                choices = sort(unique(dash_df$season)), 
-                                               selected = '2023')
-                                    )
+                                               selected = '2019/2020')
+                                    ), width = 12
                                   )), 
                            
                            column(9, 
                                   fluidRow(
-                                    dataTableOutput('display_players')
+                                    dataTableOutput('display_players'), 
+                                    renderPlotly('profile ')
                                   ))
                          ))
               )
@@ -144,7 +224,13 @@ body <-
                          
                          textInput(inputId = 'player_typed_name', 
                                    label = "Type in Player Name", 
-                                   value = 'Robin Lod')
+                                   value = 'Kevin De Bruyne'),
+                         
+                         
+                         selectInput(inputId = 'profile_plot_metric', 
+                                     label = "Select a Measurement for Summary", 
+                                     choices = sort(colnames(dash_df)), 
+                                     selected = 'summary_expected_xg')
                          
                          
                        ), width = 12 
@@ -152,7 +238,8 @@ body <-
                 ),
                 column(9,
                        fluidRow(
-                         tableOutput('player_profile_season_stat')
+                         tableOutput('player_profile_season_stat'), 
+                         plotlyOutput('profile_plot_player_one_var')
                        )
                       )
                     )
