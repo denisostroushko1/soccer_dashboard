@@ -124,7 +124,7 @@ top_stats_within_season_within_league <-
     SEASON, 
     SUMMARY_PLAYER, 
     TOP_VARS_N
-    )
+    ){}
 ########################################################################################################################
 ########################################################################################################################
 
@@ -134,7 +134,7 @@ server_side <-
 output$display_players <- 
   renderDataTable(
     dash_df %>% filter(league_name == input$league_of_player & 
-                         season == input$select_season) %>% 
+                         season == input$select_season_helper) %>% 
       dplyr::select(summary_player, team_name) %>% 
       unique() %>% 
       arrange(summary_player) %>% 
@@ -160,7 +160,10 @@ output$profile_plot_player_one_var <-
       MA = input$games_to_average
     )
   )
+
+### END SERER SIDE 
   }
+
 
 sidebar <- 
   dashboardSidebar(
@@ -196,7 +199,7 @@ body <-
                                    
                                    ### need to select players based on the input of league
                                    ###    i.e. display players who are in the league 
-                                   selectInput(inputId = 'select_season', 
+                                   selectInput(inputId = 'select_season_helper', 
                                                label = "Select a Season", 
                                                choices = sort(unique(dash_df$season)), 
                                                selected = '2019/2020')
@@ -226,6 +229,10 @@ body <-
                                    label = "Type in Player Name", 
                                    value = 'Kevin De Bruyne'),
                          
+                         selectInput(inputId = 'select_season', 
+                                               label = "Select a Season", 
+                                               choices = sort(unique(dash_df$season)), 
+                                               selected = '2019/2020'), 
                          
                          selectInput(inputId = 'profile_plot_metric', 
                                      label = "Select a Measurement for Summary", 
