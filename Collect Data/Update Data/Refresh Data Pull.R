@@ -57,8 +57,14 @@ links_in_upate <- pull_new_matches_urls(data_to_compare = old_links)
       # start pulling data 
 if(length(links_in_upate) == 0){
   print("No new matches to update")
-  write_feather(older_data, 'dash_df.fthr')
-  if(file.exists('dash_df.fthr') == T){print("created feather file")}
+  
+  
+  print("Finishing big data - one row per game - process the data to one row per player per season")
+
+  roll_up <- roll_up_data(big_data = older_data)
+  write_feather(roll_up, 'dash_df_rollup.fthr')
+  
+  if(file.exists('dash_df_rollup.fthr') == T){print("created feather file")}
   }
 
 if(length(links_in_upate) != 0){
