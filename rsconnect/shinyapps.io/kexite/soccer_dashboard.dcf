@@ -5,6 +5,7 @@ account: kexite
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 8809138
+<<<<<<< HEAD
 bundleId: 7094864
 url: https://kexite.shinyapps.io/soccer_dashboard/
 when: 1681623588.84269
@@ -12,3 +13,9 @@ lastSyncTime: 1681623588.8427
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: .RData|dash_df.fthr|dashboard_data.csv|Data sample.png|deploy.R|FBref Advanced Soccer Data Disctionary.csv|keys.R|README_stash.md|README.html|README.md|README.qmd
+=======
+bundleId: 7094340
+url: https://kexite.shinyapps.io/soccer_dashboard/
+when: 1681605574.8577
+lastSyncTime: 1681605574.85772
+>>>>>>> cba5a951ff81b32544e4ce4417940a2fbf3e9c13
