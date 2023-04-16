@@ -29,7 +29,8 @@ source("Master Packages.R")
         unlink('dashboard_data.csv')
         unlink('dashboard_data_csv_zip.zip')
         
-        write_feather(older_data, "dash_df.fthr")
+        roll_up <- roll_up_data(big_data = refreshed_data)
+        write_feather(roll_up, 'dash_df_rollup.fthr')
         
     print("Connect Successfull")
     }
@@ -46,7 +47,7 @@ source("Master Packages.R")
     
      print("Starting deployment")
      
-    deployApp(appFiles = c("app.R", 'dash_df.fthr', "Master Packages.R"), 
+    deployApp(appFiles = c("app.R", 'dash_df_rollup.fthr', "Master Packages.R"), 
               appName = 'soccer_dashboard', 
               forceUpdate = T)
     

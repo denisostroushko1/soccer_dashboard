@@ -1,5 +1,5 @@
 
-source("keys.R")
+if(file.exists('keys.R') == T){source("keys.R")}
 source("Master Packages.R")
 source("Master Functions.R")
 
@@ -146,10 +146,12 @@ if(length(links_in_upate) != 0){
   unlink('dashboard_data_csv_zip.zip')
   unlink('dashboard_data.csv')
   
-  print("Finishing writting of feather data file")
-  write_feather(refreshed_data, 'dash_df.fthr')
-  if(file.exists('dash_df.fthr') == T){print("created feather file")}
+  print("Finishing big data - one row per game - process the data to one row per player per season")
 
+  roll_up <- roll_up_data(big_data = refreshed_data)
+  write_feather(roll_up, 'dash_df_rollup.fthr')
+  
+  
 }
 
             
