@@ -31,7 +31,7 @@ source("Master Packages.R")
         unlink('dashboard_data.csv')
         unlink('dashboard_data_csv_zip.zip')
         
-        roll_up <- roll_up_data(big_data = refreshed_data)
+        roll_up <- roll_up_data(big_data = older_data)
         write_feather(roll_up, 'dash_df_rollup.fthr')
         
     print("Connect Successfull")

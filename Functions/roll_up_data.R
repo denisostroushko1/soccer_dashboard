@@ -17,6 +17,7 @@ roll_up_data <-
       group_by(season, summary_player, team_name, league_name) %>% 
     
       summarize(
+        games_played = n(), 
         across(where(is.numeric), sum)
         ) -> rollup_data 
     
