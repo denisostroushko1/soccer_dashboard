@@ -1,4 +1,5 @@
 
+library(curl)
 library(tidyverse)
 library(plotly)
 library(knitr)
