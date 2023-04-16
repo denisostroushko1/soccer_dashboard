@@ -19,6 +19,8 @@ dash_df <- read_feather('dash_df_rollup.fthr')
 
 dash_df <- data.table(dash_df)
 
+data_dict <- read_csv('FBref Advanced Soccer Data Disctionary.csv')[,-1]
+
 ########################################################################################################################
 ########################################################################################################################
 
@@ -29,16 +31,21 @@ dash_df <- data.table(dash_df)
 server_side <- 
   function(input, output){
     
-output$display_players <- 
-  renderDataTable(
-    dash_df[league_name == input$league_of_player &
-             season == input$select_season_helper ] %>%
-
-      dplyr::select(summary_player, team_name) %>% 
-      unique() %>% 
-      arrange(summary_player) %>% 
-      datatable()
-  )
+    output$data_dict <- 
+      renderDataTable(
+        datatable(data_dict)
+      )
+        
+    output$display_players <- 
+      renderDataTable(
+        dash_df[league_name == input$league_of_player &
+                 season == input$select_season_helper ] %>%
+    
+          dplyr::select(summary_player, team_name) %>% 
+          unique() %>% 
+          arrange(summary_player) %>% 
+          datatable()
+      )
 
 ### END SERER SIDE 
   }
@@ -87,9 +94,11 @@ body <-
                            
                            column(9, 
                                   fluidRow(
-                                    dataTableOutput('display_players')
+                                    box(dataTableOutput('display_players'), width = 12)
                                   ))
-                         ))
+                         )), 
+                tabPanel(title = 'Data Dictionary', 
+                         fluidRow(box(dataTableOutput('data_dict'), width = 12)))
               )
               ),
       tabItem(tabName = "player_profile",
