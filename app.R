@@ -99,7 +99,8 @@ best_player_features <-
     PLAYER, 
     SEASON,
     N_FEATURES, 
-    MINUTES_FILTER){
+    MINUTES_FILTER, 
+    RETURN_VECTOR){
     
     remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min')
     
@@ -147,11 +148,119 @@ best_player_features <-
         
     }
     
-    f$stat <- round(f$stat, 2)
-    f$percentile <- round(f$percentile, 4)
+    if(RETURN_VECTOR == "Y"){
+      f %>% arrange(-percentile) %>% head(N_FEATURES) %>% dplyr::select(names) %>%  unlist()
+    }
     
-    f <- f %>% arrange(-percentile) %>% head(N_FEATURES)
-    datatable(f)
+    if(RETURN_VECTOR == "N"){
+      f$stat <- round(f$stat, 2)
+      f$percentile <- round(f$percentile, 4)
+    
+      f <- f %>% arrange(-percentile) %>% head(N_FEATURES)
+      datatable(f)
+    }
+    
+  }
+
+clustering <- 
+  function(
+    DATA, 
+    PLAYER, 
+    SEASON, 
+    MINUTES_FILTER, 
+    N_FEATURES, 
+    TARGET_SIMILAR_PLAYERS
+  ){
+    
+    ################
+    # This is supposed to be created with a different 
+        remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min')
+        player_df <-  DATA[summary_player == PLAYER & season == SEASON ] 
+        player_df$league_name -> league
+        
+        player_min <- player_df$summary_min
+        
+        league_stat <- DATA[league_name == league & season == SEASON & summary_min >= MINUTES_FILTER]
+        minutes <- league_stat$summary_min
+          
+        league_stat <- league_stat %>% 
+          dplyr::select(-all_of(remove_colnames))
+        
+        names <- colnames(league_stat)
+        
+        f <- data_frame(
+          names = names,
+          raw_stat = rep(NA, length(names)), 
+          stat = rep(NA, length(names)), 
+          percentile = rep(NA, length(names))
+          )
+        
+        for( i in 1:length(league_stat)){
+          
+          col = f$names[i]
+          
+          player_val <- player_df %>% select(all_of(col)) %>% unlist() 
+          player_val_raw <- player_val
+          player_val <- player_val / player_min * 90
+            
+          comp_values <-  
+            league_stat %>% 
+            select(all_of(col)) %>% 
+            unlist() 
+          
+          comp_values <- comp_values / minutes * 90
+          
+          percentile <- length(which(comp_values <= player_val)) / 
+                          length(comp_values)
+          
+          f$raw_stat[i] = player_val_raw
+          f$stat[i] = player_val
+          f$percentile[i] = percentile
+            
+        }
+    f %>% arrange(-percentile) %>% head(N_FEATURES) %>% dplyr::select(names) %>%  unlist() -> FEATURES_LIST
+    ###############
+    
+    
+    DATA[summary_player == PLAYER & season == SEASON ]$league_name -> league
+    DATA[summary_player == PLAYER & season == SEASON ]$team_name -> team
+    
+    df <- DATA[league_name == league & season == SEASON & summary_min >= MINUTES_FILTER & team_name != team] %>% 
+      
+      select(all_of(
+          c(FEATURES_LIST, "summary_player", "summary_min", 'team_name')
+        ))
+    
+    df_player <- DATA[summary_player == PLAYER & season == SEASON ] %>% 
+      
+      select(all_of(
+          c(FEATURES_LIST, "summary_player", "summary_min", 'team_name')
+        ))
+    
+    df <- rbind(df, df_player)
+    
+    colnames(df) <- c(FEATURES_LIST, "summary_player", "summary_min", 'team_name')
+    
+    players = df$summary_player
+    minutes = df$summary_min
+    team_name = df$team_name
+    
+    df <- df %>% select(-summary_player, -summary_min, -team_name)
+    
+    df <- df %>% 
+      mutate_all(~. / minutes * 90)
+    
+    km = kmeans(df, round(nrow(df)/TARGET_SIMILAR_PLAYERS)
+                  )
+    
+    final <- 
+      data.frame(
+        cluster = km$cluster, 
+        players = players,
+        team_name = team_name
+      )
+    
+    final %>% filter(cluster == final[final$players == PLAYER, ]$cluster)
     
   }
 
@@ -202,9 +311,21 @@ server_side <-
           PLAYER = input$player_typed_name,
           SEASON = input$select_season,
           N_FEATURES = input$top_values_number,
-          MINUTES_FILTER = input$minutes_to_limit
+          MINUTES_FILTER = input$minutes_to_limit,
+          RETURN_VECTOR = "N"
       ))
 
+    output$clustering <- 
+      renderTable(
+        clustering(
+          DATA = dash_df,
+          PLAYER = input$player_typed_name,
+          SEASON = input$select_season, 
+          N_FEATURES = input$top_values_number,
+          MINUTES_FILTER = input$minutes_to_limit,
+          TARGET_SIMILAR_PLAYERS = input$target_sim_players
+          )
+        )
 ### END SERER SIDE 
   }
 
@@ -226,7 +347,9 @@ sidebar <-
 body <-
   dashboardBody(
     tabItems(
-      tabItem(tabName = "intro"
+      tabItem(tabName = "intro", 
+              "Hello", 
+              verbatimTextOutput('test')
               ),
       tabItem(tabName = "helper", 
               tabsetPanel(
@@ -293,7 +416,13 @@ body <-
                                       label = "Limit Players by Limit", 
                                       min = 0, 
                                       max = max(dash_df$summary_min), 
-                                      value = 450)
+                                      value = 450), 
+                         
+                         numericInput(inputId = 'target_sim_players', 
+                                      label = "Approximate Similar Players to Find", 
+                                      min = 0, 
+                                      max = 50, 
+                                      value = 10)
                          
                          
                          
@@ -304,7 +433,9 @@ body <-
                        fluidRow(
                                 box(tableOutput('game_and_min_summary'), width = 12), 
                                 box(dataTableOutput('dynamic_table_summary'), width = 12), 
-                                box(dataTableOutput('best_player_features'), width = 12)
+                                box(dataTableOutput('best_player_features'), width = 12),
+                                box(tableOutput('clustering'), width = 12)
+                                
                                 )
                       )
                     )
