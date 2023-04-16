@@ -6,6 +6,8 @@ source("Master Packages.R")
 
     if(file.exists('keys.R') == T){
       
+      source("Master Functions.R")
+      
       print("Starting local deployemnt")
       ## conditions for a local deployment 
       source('keys.R')
