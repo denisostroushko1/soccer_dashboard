@@ -93,7 +93,7 @@ dynamic_table_summary <-
     
   }
 
-best_player_features <- 
+find_player_features <- 
   function(
     DATA, 
     PLAYER, 
@@ -101,7 +101,8 @@ best_player_features <-
     N_FEATURES, 
     MINUTES_FILTER, 
     RETURN_VECTOR, 
-    COMP_LEAGUES){
+    COMP_LEAGUES, 
+    BEST_OR_WORST){
     
     remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min')
     
@@ -135,20 +136,45 @@ best_player_features <-
       player_raw_stat, 
       player_stat, 
       int_res 
-    ) %>% arrange(-int_res) %>% head(N_FEATURES) %>% 
-      mutate(
-        player_stat = round(player_stat, 4),
-        int_res = round(int_res, 6)
-      )
-    rownames(f) <- NULL
+    ) 
 
     if(RETURN_VECTOR == "Y"){
-      return(f %>%  dplyr::select(names) %>%  unlist())
+      return(f %>%  arrange(-int_res) %>% dplyr::select(names) %>%  unlist() %>% head(N_FEATURES))
     }
     
-    if(RETURN_VECTOR == "N"){
-      f <- f %>% rename(percentile = int_res)
-      datatable(f)
+    if(RETURN_VECTOR == "N" & BEST_OR_WORST == "BEST"){
+      
+      print_res <-
+        f %>% arrange(-int_res) %>%
+          mutate(
+            player_stat = round(player_stat, 4),
+            int_res = round(int_res, 6)
+            ) %>%
+          rename(percentile = int_res) %>%
+          head(N_FEATURES)
+
+      nrow(print_res)
+
+      rownames(print_res) <- NULL
+
+      return(datatable(print_res))
+    }
+    
+    if(RETURN_VECTOR == "N" & BEST_OR_WORST == "WORST"){
+      
+      print_res <- 
+        f %>% arrange(int_res) %>%  
+          mutate(
+            player_stat = round(player_stat, 4),
+            int_res = round(int_res, 6)
+            ) %>%
+          rename(percentile = int_res) %>% 
+          head(N_FEATURES) 
+     
+      rownames(print_res) <- NULL
+      
+      return(datatable(print_res))
+      
     }
     
   }
@@ -196,7 +222,7 @@ similar_players <-
     
     f <- f %>% mutate(sum = sqrt(rowSums(.)))
     
-    f$scaled_dist <- with(f, (sum - min(sum)) / (max(sum) - min(sum)))
+    f$scaled_dist <- with(f, (sum - 0) / (max(sum) - 0))
       
     f <- cbind(f, players, minutes, team_name, league_name)
     
@@ -244,28 +270,42 @@ server_side <-
           COLUMNS = input$feature
         )
       )
-    
-    output$best_player_features <-
-      renderDataTable(
-        best_player_features(
-          DATA = dash_df,
-          PLAYER = input$player_typed_name,
-          SEASON = input$select_season,
-          N_FEATURES = input$top_values_number,
-          MINUTES_FILTER = input$minutes_to_limit,
-          RETURN_VECTOR = "N",
-          COMP_LEAGUES = input$comp_leagues
-      ))
-    
     best_player_features_vec <-
       reactive(
-        best_player_features(
+        find_player_features(
           DATA = dash_df,
           PLAYER = input$player_typed_name,
           SEASON = input$select_season,
           N_FEATURES = input$top_values_number,
           MINUTES_FILTER = input$minutes_to_limit,
           RETURN_VECTOR = "Y",
+          BEST_OR_WORST = "", 
+          COMP_LEAGUES = input$comp_leagues
+      ))
+    
+    output$best_player_features <-
+      renderDataTable(
+        find_player_features(
+          DATA = dash_df,
+          PLAYER = input$player_typed_name,
+          SEASON = input$select_season,
+          N_FEATURES = input$top_values_number,
+          MINUTES_FILTER = input$minutes_to_limit,
+          RETURN_VECTOR = "N",
+          BEST_OR_WORST = "BEST", 
+          COMP_LEAGUES = input$comp_leagues
+      ))
+    
+    output$worst_player_features <-
+      renderDataTable(
+        find_player_features(
+          DATA = dash_df,
+          PLAYER = input$player_typed_name,
+          SEASON = input$select_season,
+          N_FEATURES = input$top_values_number,
+          MINUTES_FILTER = input$minutes_to_limit,
+          RETURN_VECTOR = "N",
+          BEST_OR_WORST = "WORST", 
           COMP_LEAGUES = input$comp_leagues
       ))
     
@@ -394,7 +434,8 @@ body <-
                        fluidRow(
                                 box(tableOutput('game_and_min_summary'), width = 12), 
                                 box(dataTableOutput('dynamic_table_summary'), width = 12), 
-                                box(dataTableOutput('best_player_features'), width = 12),
+                                box(dataTableOutput('best_player_features'), width = 12), 
+                                box(dataTableOutput('worst_player_features'), width = 12),
                                 box(tableOutput('similar_players'), width = 12)
                                 
                                 )
