@@ -100,63 +100,47 @@ best_player_features <-
     SEASON,
     N_FEATURES, 
     MINUTES_FILTER, 
-    RETURN_VECTOR){
+    RETURN_VECTOR, 
+    COMP_LEAGUES){
     
     remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min')
     
+    # selected player data 
     player_df <-  DATA[summary_player == PLAYER & season == SEASON ] 
-    player_df$league_name -> league
-    
     player_min <- player_df$summary_min
+    player_df <- player_df %>% dplyr::select(-all_of(remove_colnames))
+    player_df <- player_df %>% mutate_all(~. / player_min * 90)
     
-    league_stat <- DATA[league_name == league & season == SEASON & summary_min >= MINUTES_FILTER]
+    # other players data 
+    league_stat <- DATA[league_name %in% COMP_LEAGUES & season == SEASON & summary_min >= MINUTES_FILTER]
     minutes <- league_stat$summary_min
-      
-    league_stat <- league_stat %>% 
-      dplyr::select(-all_of(remove_colnames))
+    league_stat <- league_stat %>% dplyr::select(-all_of(remove_colnames))
+    league_stat <- league_stat %>% mutate_all(~. / minutes * 90)
     
-    names <- colnames(league_stat)
+    # now I need to grab percentiles of player's per 90 statistics using data of selected plaeyrs 
+    player_df_stat <- player_df %>% unlist()
+    player_df_percentile <- 
+      league_stat %>% 
+        summarise(across(everything(), 
+                         ~sum(. <= player_df_stat[match(cur_column(), names(league_stat))])/nrow(league_stat)
+                         )
+                  ) -> int_res 
     
-    f <- data_frame(
-      names = names,
-      raw_stat = rep(NA, length(names)), 
-      stat = rep(NA, length(names)), 
-      percentile = rep(NA, length(names))
-      )
+    names <- names(int_res)
+    int_res <- int_res %>% t()
     
-    for( i in 1:length(league_stat)){
-      
-      col = f$names[i]
-      
-      player_val <- player_df %>% select(all_of(col)) %>% unlist() 
-      player_val_raw <- player_val
-      player_val <- player_val / player_min * 90
-        
-      comp_values <-  
-        league_stat %>% 
-        select(all_of(col)) %>% 
-        unlist() 
-      
-      comp_values <- comp_values / minutes * 90
-      
-      percentile <- length(which(comp_values <= player_val)) / 
-                      length(comp_values)
-      
-      f$raw_stat[i] = player_val_raw
-      f$stat[i] = player_val
-      f$percentile[i] = percentile
-        
-    }
-    
+    f <- data.frame(
+      names, 
+      int_res 
+    ) %>% arrange(-int_res) %>% head(N_FEATURES)
+    rownames(f) <- NULL
+
     if(RETURN_VECTOR == "Y"){
-      return(f %>% arrange(-percentile) %>% head(N_FEATURES) %>% dplyr::select(names) %>%  unlist())
+      return(f %>%  dplyr::select(names) %>%  unlist())
     }
     
     if(RETURN_VECTOR == "N"){
-      f$stat <- round(f$stat, 2)
-      f$percentile <- round(f$percentile, 4)
-    
-      f <- f %>% arrange(-percentile) %>% head(N_FEATURES)
+      f <- f %>% rename(percentile = int_res)
       datatable(f)
     }
     
@@ -168,36 +152,10 @@ similar_players <-
     PLAYER, 
     SEASON, 
     MINUTES_FILTER, 
-    N_FEATURES, 
     TARGET_SIMILAR_PLAYERS,
-    FEATURES_LIST
+    FEATURES_LIST, 
+    COMP_LEAGUES
   ){
-    
-    ################
-    # This is supposed to be created with a different 
-    # also, I am sure that we can mutate to percentiles using mutate_all and avoid a clunky loop 
-        remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min')
-        player_df <-  DATA[summary_player == PLAYER & season == SEASON ]
-        player_df$league_name -> league
-        
-        player_min <- player_df$summary_min
-        
-        league_stat <- DATA[league_name == league & season == SEASON & summary_min >= MINUTES_FILTER]
-        minutes <- league_stat$summary_min
-          
-        league_stat <- league_stat %>% 
-          dplyr::select(-all_of(remove_colnames))
-        
-        names <- colnames(league_stat)
-    
-    DATA[summary_player == PLAYER & season == SEASON ]$league_name -> league
-    DATA[summary_player == PLAYER & season == SEASON ]$team_name -> team
-    
-    df <- DATA[league_name == league & season == SEASON & summary_min >= MINUTES_FILTER & team_name != team] %>% 
-      
-      select(all_of(
-          c(FEATURES_LIST, "summary_player", "summary_min", 'team_name')
-        ))
     
     df_player <- DATA[summary_player == PLAYER & season == SEASON ] %>% 
       
@@ -205,12 +163,19 @@ similar_players <-
           c(FEATURES_LIST, "summary_player", "summary_min", 'team_name')
         ))
     
-    colnames(df) <- c(FEATURES_LIST, "summary_player", "summary_min", 'team_name')
-    colnames(df_player) <- c(FEATURES_LIST, "summary_player", "summary_min", 'team_name')
+    team <- df_player$team_name
+    player_min <- df_player$summary_min
+    
+    df <- DATA[league_name %in% COMP_LEAGUES & season == SEASON & summary_min >= MINUTES_FILTER & team_name != team] %>% 
+      
+      select(all_of(
+          c(FEATURES_LIST, "summary_player", "summary_min", 'team_name')
+        ))
     
     players = df$summary_player
     minutes = df$summary_min
     team_name = df$team_name
+    league_name = df$league_name
     
     df <- df %>% select(-summary_player, -summary_min, -team_name)
     df_player <- df_player %>% select(-summary_player, -summary_min, -team_name)
@@ -226,11 +191,11 @@ similar_players <-
     
     f$scaled_dist <- with(f, (sum - min(sum)) / (max(sum) - min(sum)))
       
-    f <- cbind(f, players, minutes, team_name)
+    f <- cbind(f, players, minutes, team_name, league_name)
     
     f <- f %>% arrange(scaled_dist)
     
-    f %>% select(players, team_name, minutes, scaled_dist) %>% head(TARGET_SIMILAR_PLAYERS)
+    f %>% select(players, league_name, team_name, minutes, scaled_dist) %>% head(TARGET_SIMILAR_PLAYERS)
   }
 
 ########################################################################################################################
@@ -281,7 +246,8 @@ server_side <-
           SEASON = input$select_season,
           N_FEATURES = input$top_values_number,
           MINUTES_FILTER = input$minutes_to_limit,
-          RETURN_VECTOR = "N"
+          RETURN_VECTOR = "N",
+          COMP_LEAGUES = input$comp_leagues
       ))
     
     best_player_features_vec <-
@@ -292,19 +258,20 @@ server_side <-
           SEASON = input$select_season,
           N_FEATURES = input$top_values_number,
           MINUTES_FILTER = input$minutes_to_limit,
-          RETURN_VECTOR = "Y"
+          RETURN_VECTOR = "Y",
+          COMP_LEAGUES = input$comp_leagues
       ))
     
     output$similar_players <- 
       renderTable(
         similar_players(
-          FEATURES_LIST = best_player_features_vec(), 
-          DATA = dash_df,
+          DATA = dash_df, 
           PLAYER = input$player_typed_name,
           SEASON = input$select_season, 
-          N_FEATURES = input$top_values_number,
           MINUTES_FILTER = input$minutes_to_limit,
-          TARGET_SIMILAR_PLAYERS = input$target_sim_players
+          TARGET_SIMILAR_PLAYERS = input$target_sim_players, 
+          FEATURES_LIST = best_player_features_vec(), 
+          COMP_LEAGUES = input$comp_leagues
           )
         )
 ### END SERER SIDE 
