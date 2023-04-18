@@ -162,7 +162,7 @@ best_player_features <-
     
   }
 
-clustering <- 
+similar_players <- 
   function(
     DATA, 
     PLAYER, 
@@ -174,8 +174,9 @@ clustering <-
     
     ################
     # This is supposed to be created with a different 
+    # also, I am sure that we can mutate to percentiles using mutate_all and avoid a clunky loop 
         remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min')
-        player_df <-  DATA[summary_player == PLAYER & season == SEASON ] 
+        player_df <-  DATA[summary_player == PLAYER & season == SEASON ]
         player_df$league_name -> league
         
         player_min <- player_df$summary_min
@@ -237,31 +238,32 @@ clustering <-
           c(FEATURES_LIST, "summary_player", "summary_min", 'team_name')
         ))
     
-    df <- rbind(df, df_player)
-    
     colnames(df) <- c(FEATURES_LIST, "summary_player", "summary_min", 'team_name')
+    colnames(df_player) <- c(FEATURES_LIST, "summary_player", "summary_min", 'team_name')
     
     players = df$summary_player
     minutes = df$summary_min
     team_name = df$team_name
     
     df <- df %>% select(-summary_player, -summary_min, -team_name)
+    df_player <- df_player %>% select(-summary_player, -summary_min, -team_name)
     
-    df <- df %>% 
-      mutate_all(~. / minutes * 90)
+    df <- df %>% mutate_all(~. / minutes * 90)
+    df_player <- df_player %>% mutate_all(~. / player_min * 90)
     
-    km = kmeans(df, round(nrow(df)/TARGET_SIMILAR_PLAYERS)
-                  )
+    df_player %>% unlist() -> vals_for_distance
     
-    final <- 
-      data.frame(
-        cluster = km$cluster, 
-        players = players,
-        team_name = team_name
-      )
+    f <- df %>% mutate(across(.cols = everything(), ~ (. - vals_for_distance[match(cur_column(), names(df))])^2))
     
-    final %>% filter(cluster == final[final$players == PLAYER, ]$cluster)
+    f <- f %>% mutate(sum = sqrt(rowSums(.)))
     
+    f$scaled_dist <- with(f, (sum - min(sum)) / (max(sum) - min(sum)))
+      
+    f <- cbind(f, players, minutes, team_name)
+    
+    f <- f %>% arrange(scaled_dist)
+    
+    f %>% select(players, team_name, minutes, scaled_dist) %>% head(TARGET_SIMILAR_PLAYERS)
   }
 
 ########################################################################################################################
@@ -315,9 +317,9 @@ server_side <-
           RETURN_VECTOR = "N"
       ))
 
-    output$clustering <- 
+    output$similar_players <- 
       renderTable(
-        clustering(
+        similar_players(
           DATA = dash_df,
           PLAYER = input$player_typed_name,
           SEASON = input$select_season, 
@@ -422,8 +424,14 @@ body <-
                                       label = "Approximate Similar Players to Find", 
                                       min = 0, 
                                       max = 50, 
-                                      value = 10)
+                                      value = 10),
                          
+                         selectInput(inputId = 'comp_leagues', 
+                                     label = "Compare From League", 
+                                     choices = sort(unique(dash_df$league_name)), 
+                                     selected = "Premier League", 
+                                     multiple = T)
+               
                          
                          
                        ), width = 12 
@@ -434,7 +442,7 @@ body <-
                                 box(tableOutput('game_and_min_summary'), width = 12), 
                                 box(dataTableOutput('dynamic_table_summary'), width = 12), 
                                 box(dataTableOutput('best_player_features'), width = 12),
-                                box(tableOutput('clustering'), width = 12)
+                                box(tableOutput('similar_players'), width = 12)
                                 
                                 )
                       )
