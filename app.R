@@ -149,7 +149,7 @@ best_player_features <-
     }
     
     if(RETURN_VECTOR == "Y"){
-      f %>% arrange(-percentile) %>% head(N_FEATURES) %>% dplyr::select(names) %>%  unlist()
+      return(f %>% arrange(-percentile) %>% head(N_FEATURES) %>% dplyr::select(names) %>%  unlist())
     }
     
     if(RETURN_VECTOR == "N"){
@@ -169,7 +169,8 @@ similar_players <-
     SEASON, 
     MINUTES_FILTER, 
     N_FEATURES, 
-    TARGET_SIMILAR_PLAYERS
+    TARGET_SIMILAR_PLAYERS,
+    FEATURES_LIST
   ){
     
     ################
@@ -188,40 +189,6 @@ similar_players <-
           dplyr::select(-all_of(remove_colnames))
         
         names <- colnames(league_stat)
-        
-        f <- data_frame(
-          names = names,
-          raw_stat = rep(NA, length(names)), 
-          stat = rep(NA, length(names)), 
-          percentile = rep(NA, length(names))
-          )
-        
-        for( i in 1:length(league_stat)){
-          
-          col = f$names[i]
-          
-          player_val <- player_df %>% select(all_of(col)) %>% unlist() 
-          player_val_raw <- player_val
-          player_val <- player_val / player_min * 90
-            
-          comp_values <-  
-            league_stat %>% 
-            select(all_of(col)) %>% 
-            unlist() 
-          
-          comp_values <- comp_values / minutes * 90
-          
-          percentile <- length(which(comp_values <= player_val)) / 
-                          length(comp_values)
-          
-          f$raw_stat[i] = player_val_raw
-          f$stat[i] = player_val
-          f$percentile[i] = percentile
-            
-        }
-    f %>% arrange(-percentile) %>% head(N_FEATURES) %>% dplyr::select(names) %>%  unlist() -> FEATURES_LIST
-    ###############
-    
     
     DATA[summary_player == PLAYER & season == SEASON ]$league_name -> league
     DATA[summary_player == PLAYER & season == SEASON ]$team_name -> team
@@ -316,10 +283,22 @@ server_side <-
           MINUTES_FILTER = input$minutes_to_limit,
           RETURN_VECTOR = "N"
       ))
-
+    
+    best_player_features_vec <-
+      reactive(
+        best_player_features(
+          DATA = dash_df,
+          PLAYER = input$player_typed_name,
+          SEASON = input$select_season,
+          N_FEATURES = input$top_values_number,
+          MINUTES_FILTER = input$minutes_to_limit,
+          RETURN_VECTOR = "Y"
+      ))
+    
     output$similar_players <- 
       renderTable(
         similar_players(
+          FEATURES_LIST = best_player_features_vec(), 
           DATA = dash_df,
           PLAYER = input$player_typed_name,
           SEASON = input$select_season, 
