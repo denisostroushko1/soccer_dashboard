@@ -109,6 +109,7 @@ best_player_features <-
     player_df <-  DATA[summary_player == PLAYER & season == SEASON ] 
     player_min <- player_df$summary_min
     player_df <- player_df %>% dplyr::select(-all_of(remove_colnames))
+    player_raw_stat <- player_df %>% unlist()
     player_df <- player_df %>% mutate_all(~. / player_min * 90)
     
     # other players data 
@@ -118,11 +119,11 @@ best_player_features <-
     league_stat <- league_stat %>% mutate_all(~. / minutes * 90)
     
     # now I need to grab percentiles of player's per 90 statistics using data of selected plaeyrs 
-    player_df_stat <- player_df %>% unlist()
+    player_stat <- player_df %>% unlist()
     player_df_percentile <- 
       league_stat %>% 
         summarise(across(everything(), 
-                         ~sum(. <= player_df_stat[match(cur_column(), names(league_stat))])/nrow(league_stat)
+                         ~sum(. <= player_stat[match(cur_column(), names(league_stat))])/nrow(league_stat)
                          )
                   ) -> int_res 
     
@@ -131,8 +132,14 @@ best_player_features <-
     
     f <- data.frame(
       names, 
+      player_raw_stat, 
+      player_stat, 
       int_res 
-    ) %>% arrange(-int_res) %>% head(N_FEATURES)
+    ) %>% arrange(-int_res) %>% head(N_FEATURES) %>% 
+      mutate(
+        player_stat = round(player_stat, 4),
+        int_res = round(int_res, 6)
+      )
     rownames(f) <- NULL
 
     if(RETURN_VECTOR == "Y"){
