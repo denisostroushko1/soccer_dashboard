@@ -5,7 +5,7 @@ account: kexite
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 8865187
-bundleId: 7104867
+bundleId: 7105373
 url: https://kexite.shinyapps.io/soccer_dashboard/
-when: 1681829961.86153
-lastSyncTime: 1681829961.86154
+when: 1681835720.20395
+lastSyncTime: 1681835720.20396
