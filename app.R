@@ -187,7 +187,8 @@ similar_players <-
     MINUTES_FILTER, 
     TARGET_SIMILAR_PLAYERS,
     FEATURES_LIST, 
-    COMP_LEAGUES
+    COMP_LEAGUES, 
+    RETURN_VECTOR
   ){
     
     df_player <- DATA[summary_player == PLAYER & season == SEASON ] %>% 
@@ -228,7 +229,130 @@ similar_players <-
     
     f <- f %>% arrange(scaled_dist)
     
-    f %>% select(players, league_name, team_name, minutes, scaled_dist) %>% head(TARGET_SIMILAR_PLAYERS)
+    if(RETURN_VECTOR == "N"){
+      return(f %>% select(players, league_name, team_name, minutes, scaled_dist) %>% head(TARGET_SIMILAR_PLAYERS))
+    }
+    
+    if(RETURN_VECTOR == "Y"){
+      return(f %>% select(players) %>% head(TARGET_SIMILAR_PLAYERS) %>% unlist())
+    }
+  }
+
+similar_players_pca_plot <- 
+  function(
+    DATA, 
+    PLAYER, 
+    SEASON, 
+    MINUTES_FILTER, 
+    FEATURES_LIST, 
+    COMP_LEAGUES,
+    COLOR) {
+    
+      df_player <- DATA[summary_player == PLAYER & season == SEASON ] %>% 
+        
+        select(all_of(
+            c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', "league_name")
+          ))
+      
+      player <- df_player$summary_player
+      team <- df_player$team_name
+      player_min <- df_player$summary_min
+      player_league <- df_player$league_name
+      
+      df <- DATA[league_name %in% COMP_LEAGUES & season == SEASON & summary_min >= MINUTES_FILTER & team_name != team] %>% 
+        
+        select(all_of(
+            c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', "league_name")
+          ))
+      
+      players = df$summary_player
+      minutes = df$summary_min
+      team_name = df$team_name
+      league_name = df$league_name
+      
+      df <- df %>% select(-summary_player, -summary_min, -team_name, -league_name)
+      df_player <- df_player %>% select(-summary_player, -summary_min, -team_name, -league_name)
+      
+      df <- df %>% mutate_all(~. / minutes * 90)
+      df_player <- df_player %>% mutate_all(~. / player_min * 90)
+    
+      df_all <- rbind(df, df_player)
+      
+      pca_res <- prcomp(df_all, scale. = T)
+      
+      percent_1 <- data.frame(summary(pca_res)[6])[2,1]
+      percent_2 <- data.frame(summary(pca_res)[6])[2,2]
+      
+      plot_df <- 
+        data.frame(
+          PC1 = pca_res$x[,1],
+          PC2 = pca_res$x[,2],
+          summary_player = c(players, player), 
+          team_name = c(team_name, team), 
+          league_name = c(league_name, player_league), 
+          minutes = c(minutes, player_min)
+        )
+      
+      play_df <- plot_df %>% filter(summary_player == PLAYER)
+      similar <- plot_df %>% filter(summary_player %in% COLOR)
+      
+      plot_df <- plot_df %>% filter(!(summary_player %in% play_df$summary_player | 
+                                        summary_player %in% similar$summary_player))
+      
+        with(plot_df, 
+             plot_df %>% 
+                plot_ly() %>% 
+                add_trace(
+                  x = ~PC1, 
+                  y = ~PC2, 
+                  color = ~league_name, 
+                  type = "scatter", 
+                  mode = "markers", 
+                  
+                  text = paste(
+                    "Player: ", summary_player, 
+                    "<br>Team: ", team_name, 
+                    "<br>League: ", league_name
+                  ), 
+                  hoverinfo = 'text'
+                ) %>% 
+               
+               add_trace(
+                 x = ~play_df$PC1, 
+                 y = ~play_df$PC2, 
+                 type = "scatter", 
+                 mode = "markers", 
+                 marker = list(color = 'purple', size = 10), 
+                 opacity = .75, 
+                 name = PLAYER, 
+                 text = paste(
+                    "Player: ", play_df$summary_player, 
+                    "<br>Team: ", play_df$team_name, 
+                    "<br>League: ", play_df$league_name
+                  ), 
+                 hoverinfo = 'text'
+               ) %>% 
+               
+               add_trace(
+                 x = ~similar$PC1, 
+                 y = ~similar$PC2, 
+                 type = "scatter", 
+                 mode = "markers", 
+                 marker = list(color = 'red', size = 8), 
+                 opacity = .75, 
+                 name = paste0("Players similar to ", PLAYER), 
+                 text = paste(
+                    "Player: ", similar$summary_player, 
+                    "<br>Team: ", similar$team_name, 
+                    "<br>League: ", similar$league_name
+                  ), 
+                 hoverinfo = 'text'
+               ) %>% 
+               
+               layout(xaxis = list(title = paste0("PC1 Proportion of Variance: ", round(percent_1, 4)*100, "%")),
+                      yaxis = list(title = paste0("PC2 Proportion of Variance: ", round(percent_2, 4)*100, "%"))
+                      )
+        )
   }
 
 ########################################################################################################################
@@ -318,9 +442,37 @@ server_side <-
           MINUTES_FILTER = input$minutes_to_limit,
           TARGET_SIMILAR_PLAYERS = input$target_sim_players, 
           FEATURES_LIST = best_player_features_vec(), 
-          COMP_LEAGUES = input$comp_leagues
+          COMP_LEAGUES = input$comp_leagues, 
+          RETURN_VECTOR = "N"
           )
         )
+    
+    similar_players_vector <- 
+      reactive(
+        similar_players(
+          DATA = dash_df, 
+          PLAYER = input$player_typed_name,
+          SEASON = input$select_season, 
+          MINUTES_FILTER = input$minutes_to_limit,
+          TARGET_SIMILAR_PLAYERS = input$target_sim_players, 
+          FEATURES_LIST = best_player_features_vec(), 
+          COMP_LEAGUES = input$comp_leagues, 
+          RETURN_VECTOR = "Y"
+          )
+      )
+    
+    output$similar_players_pca_plot <- 
+      renderPlotly(
+        similar_players_pca_plot(
+          DATA = dash_df, 
+          PLAYER = input$player_typed_name,
+          SEASON = input$select_season, 
+          MINUTES_FILTER = input$minutes_to_limit,
+          FEATURES_LIST = best_player_features_vec(), 
+          COMP_LEAGUES = input$comp_leagues, 
+          COLOR = similar_players_vector()
+        )
+      )
 ### END SERER SIDE 
   }
 
@@ -436,7 +588,8 @@ body <-
                                 box(dataTableOutput('dynamic_table_summary'), width = 12), 
                                 box(dataTableOutput('best_player_features'), width = 12), 
                                 box(dataTableOutput('worst_player_features'), width = 12),
-                                box(tableOutput('similar_players'), width = 12)
+                                box(tableOutput('similar_players'), width = 12), 
+                                box(plotlyOutput('similar_players_pca_plot'), width = 12)
                                 
                                 )
                       )
