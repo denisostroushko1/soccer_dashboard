@@ -278,6 +278,7 @@ similar_players_pca_plot <-
     
       df_all <- rbind(df, df_player)
       
+      set.seed(1)
       pca_res <- prcomp(df_all, scale. = T)
       
       percent_1 <- data.frame(summary(pca_res)[6])[2,1]
@@ -563,7 +564,7 @@ body <-
                                       label = "Limit Players by Limit", 
                                       min = 0, 
                                       max = max(dash_df$summary_min), 
-                                      value = 450), 
+                                      value = 1000), 
                          
                          numericInput(inputId = 'target_sim_players', 
                                       label = "Approximate Similar Players to Find", 
