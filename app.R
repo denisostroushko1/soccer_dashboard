@@ -2,17 +2,13 @@
 
   source("Master Packages.R")
   
-  # 
-  # Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
-  #            "AWS_SECRET_ACCESS_KEY" = secret_key,
-  #            "AWS_DEFAULT_REGION" = aws_region)
-  # 
-  # tempfile <- tempfile()  
-  # save_object(object = "s3://shiny-soccer-data/dashboard_data_csv_zip.zip", file = tempfile)
-  # zipped <- unzip(tempfile)
-  # dash_df <- read_csv("dashboard_data.csv", show_col_types = FALSE)[,-1]
-  
-  # dash_df <- read_csv("dashboard_data.csv", show_col_types = FALSE)[,-1]
+      top_5_leagues <- 
+        c("Fußball-Bundesliga", 
+          "La Liga", 
+          "Ligue 1" , 
+          "Premier League", 
+          "Serie A" 
+          )
   
 dash_df <- read_feather('dash_df_rollup.fthr')
 
@@ -21,15 +17,18 @@ dash_df <- dash_df[league_name != "UEFA Champions League"]
 
 data_dict <- read_csv('FBref Advanced Soccer Data Disctionary.csv')[,-1]
 
-if(T == F){
-  
-  DATA = dash_df
-  PLAYER = "Kevin De Bruyne"
-  SEASON = '2022/2023'
-  N_FEATURES = 15
-  MINUTES_FILTER = 450
-  
-}
+    original <- colnames(dash_df)
+    reduced <- colnames(dash_df)[ which(colnames(dash_df) %in% data_dict$`Data Frame Name`) ]
+    
+    f_colnames <- 
+      c(
+        'league_name', 
+        'games_played', 
+        reduced
+      )
+    
+dash_df <- dash_df[,..f_colnames]
+
 
 ########################################################################################################################
 ########################################################################################################################
@@ -124,7 +123,8 @@ find_player_features <-
     player_df_percentile <- 
       league_stat %>% 
         summarise(across(everything(), 
-                         ~sum(. <= player_stat[match(cur_column(), names(league_stat))])/nrow(league_stat)
+                         # calculate percentiles using unique values of metrics of other players 
+                         ~sum(unique(.) <= player_stat[match(cur_column(), names(league_stat))])/length(unique(.))
                          )
                   ) -> int_res 
     
@@ -178,6 +178,63 @@ find_player_features <-
     }
     
   }
+
+
+all_features_quantiles_density <- 
+  function(
+    DATA, 
+    PLAYER, 
+    SEASON,
+    MINUTES_FILTER, 
+    COMP_LEAGUES
+  ){
+    
+    remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min')
+    
+    # selected player data 
+    player_df <-  DATA[summary_player == PLAYER & season == SEASON ] 
+    player_min <- player_df$summary_min
+    player_df <- player_df %>% dplyr::select(-all_of(remove_colnames))
+    player_raw_stat <- player_df %>% unlist()
+    player_df <- player_df %>% mutate_all(~. / player_min * 90)
+    
+    # other players data 
+    league_stat <- DATA[league_name %in% COMP_LEAGUES & season == SEASON & summary_min >= MINUTES_FILTER]
+    minutes <- league_stat$summary_min
+    league_stat <- league_stat %>% dplyr::select(-all_of(remove_colnames))
+    league_stat <- league_stat %>% mutate_all(~. / minutes * 90)
+    
+    # now I need to grab percentiles of player's per 90 statistics using data of selected plaeyrs 
+    player_stat <- player_df %>% unlist()
+    player_df_percentile <- 
+      league_stat %>% 
+        summarise(across(everything(), 
+                         ~sum(unique(.) <= player_stat[match(cur_column(), names(league_stat))])/length(unique(.))
+                         )
+                  ) -> int_res 
+    
+    namess <- names(int_res)
+    int_res <- int_res %>% t()
+    
+    f <- data.frame(
+      namess, 
+      player_raw_stat, 
+      player_stat, 
+      int_res 
+    ) 
+    
+    f$stat_cat <- sub("_.*", "", f$namess)
+
+    ggplotly(
+      ggplot(data = f, 
+             aes(x = int_res, color = stat_cat
+                 )) + 
+        geom_density(size = 1, alpha = .75) + 
+        theme_minimal() + 
+        theme(legend.position = 'none')
+    )
+  }
+
 
 similar_players <- 
   function(
@@ -310,6 +367,8 @@ similar_players_pca_plot <-
                   type = "scatter", 
                   mode = "markers", 
                   
+                  opacity = 0.5, 
+                  
                   text = paste(
                     "Player: ", summary_player, 
                     "<br>Team: ", team_name, 
@@ -434,6 +493,17 @@ server_side <-
           COMP_LEAGUES = input$comp_leagues
       ))
     
+    output$all_features_quantiles_density <- 
+      renderPlotly(
+        all_features_quantiles_density(
+          DATA = dash_df,
+          PLAYER = input$player_typed_name,
+          SEASON = input$select_season,
+          MINUTES_FILTER = input$minutes_to_limit, 
+          COMP_LEAGUES = input$comp_leagues
+        )
+      )
+    
     output$similar_players <- 
       renderTable(
         similar_players(
@@ -545,7 +615,12 @@ body <-
                                                selected = '2022/2023'), 
                          
                          selectInput(inputId="feature", 
-                                     selected = c('summary_performance_goals', 'summary_performance_ast'),
+                                     selected = c(
+                                                  'summary_performance_gls', 
+                                                  'summary_expected_xg', 
+                                                  'passing_total_cmp', 
+                                                  'defensive_tackles_tkl'
+                                                  ),
                                      label="Choose Variables for Table",
                                      choices=  
                                        setdiff( # remove some columns from options here 
@@ -558,7 +633,7 @@ body <-
                                       label = "Number of Top Features to List", 
                                       min = 0, 
                                       max = 100, 
-                                      value = 15), 
+                                      value = 25), 
                          
                          numericInput(inputId = 'minutes_to_limit', 
                                       label = "Limit Players by Limit", 
@@ -567,15 +642,15 @@ body <-
                                       value = 1000), 
                          
                          numericInput(inputId = 'target_sim_players', 
-                                      label = "Approximate Similar Players to Find", 
+                                      label = "Similar Players to Find", 
                                       min = 0, 
-                                      max = 50, 
-                                      value = 10),
+                                      max = 100, 
+                                      value = 20),
                          
                          selectInput(inputId = 'comp_leagues', 
                                      label = "Compare From League", 
                                      choices = sort(unique(dash_df$league_name)), 
-                                     selected = "Premier League", 
+                                     selected = top_5_leagues, 
                                      multiple = T)
                
                          
@@ -589,6 +664,7 @@ body <-
                                 box(dataTableOutput('dynamic_table_summary'), width = 12), 
                                 box(dataTableOutput('best_player_features'), width = 12), 
                                 box(dataTableOutput('worst_player_features'), width = 12),
+                                box(plotlyOutput('all_features_quantiles_density'), width = 12), 
                                 box(tableOutput('similar_players'), width = 12), 
                                 box(plotlyOutput('similar_players_pca_plot'), width = 12)
                                 
