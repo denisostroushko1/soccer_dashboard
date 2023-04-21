@@ -20,19 +20,35 @@ data_dict <- read_csv('FBref Advanced Soccer Data Disctionary.csv')[,-1]
     original <- colnames(dash_df)
     reduced <- colnames(dash_df)[ which(colnames(dash_df) %in% data_dict$`Data Frame Name`) ]
     
+#   original[which(!original %in% reduced)]
+    
     f_colnames <- 
       c(
         'league_name', 
         'games_played', 
+        'all_positions', 
+        'dominant_position', 
         reduced
       )
     
 dash_df <- dash_df[,..f_colnames]
 
+# store positions in a vector now 
+positions_short_names <- dash_df %>% mutate(p = substr(dominant_position, 1, 2)) %>% select(p) %>% unique() %>% unlist()
+names(positions_short_names) <- positions_short_names
+positions_short_names <- c('All', positions_short_names[positions_short_names != "NA"])
+names(positions_short_names) <- NULL
+
+# remove these columns for all per 90 calculations 
+
+remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min', 'all_positions', 
+                     'summary_age', 'dominant_position')
 
 ########################################################################################################################
 ########################################################################################################################
 
+
+## This really needs to be remade 
 game_and_min_summary <- 
   function(DATA, PLAYER, SEASON){
     
@@ -69,8 +85,9 @@ dynamic_table_summary <-
 
     func_df <- DATA[
       summary_player == PLAYER & 
-        season == SEASON 
-    ] %>% dplyr::select(all_of(c("summary_min", "games_played",COLUMNS)))
+        season %in% SEASON 
+    ] %>% dplyr::select(all_of(c("summary_min", "games_played",COLUMNS))) %>% 
+      summarise(across(everything(), sum))
     
     func_df$games_played -> games
     func_df$summary_min -> minutes
@@ -103,19 +120,30 @@ find_player_features <-
     COMP_LEAGUES, 
     BEST_OR_WORST){
     
-    remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min')
     
     # selected player data 
-    player_df <-  DATA[summary_player == PLAYER & season == SEASON ] 
-    player_min <- player_df$summary_min
-    player_df <- player_df %>% dplyr::select(-all_of(remove_colnames))
+    player_df <-  DATA[summary_player == PLAYER & season %in% SEASON ] 
+    player_min <- sum(player_df$summary_min) 
+    
+    player_df <- player_df %>% dplyr::select(-all_of(remove_colnames)) %>% 
+      summarise(across(everything(), sum))
+    
     player_raw_stat <- player_df %>% unlist()
     player_df <- player_df %>% mutate_all(~. / player_min * 90)
     
-    # other players data 
-    league_stat <- DATA[league_name %in% COMP_LEAGUES & season == SEASON & summary_min >= MINUTES_FILTER]
+    # other players data, which we compare our selected player to 
+    league_stat <- DATA[league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER]
+    league_stat <- 
+      league_stat %>% 
+        group_by(summary_player) %>% 
+        dplyr::select(-all_of(setdiff(remove_colnames, "summary_min"))) %>%  ## keep summary minutes in the data for now
+        summarise(across(everything(), sum))
+      
     minutes <- league_stat$summary_min
-    league_stat <- league_stat %>% dplyr::select(-all_of(remove_colnames))
+    
+    colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]
+    
+    league_stat <- league_stat %>% dplyr::select(-all_of(colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]))
     league_stat <- league_stat %>% mutate_all(~. / minutes * 90)
     
     # now I need to grab percentiles of player's per 90 statistics using data of selected plaeyrs 
@@ -153,8 +181,6 @@ find_player_features <-
           rename(percentile = int_res) %>%
           head(N_FEATURES)
 
-      nrow(print_res)
-
       rownames(print_res) <- NULL
 
       return(datatable(print_res))
@@ -189,19 +215,30 @@ all_features_quantiles_density <-
     COMP_LEAGUES
   ){
     
-    remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min')
     
     # selected player data 
-    player_df <-  DATA[summary_player == PLAYER & season == SEASON ] 
-    player_min <- player_df$summary_min
-    player_df <- player_df %>% dplyr::select(-all_of(remove_colnames))
+    player_df <-  DATA[summary_player == PLAYER & season %in% SEASON ] 
+    player_min <- sum(player_df$summary_min) 
+    
+    player_df <- player_df %>% dplyr::select(-all_of(remove_colnames)) %>% 
+      summarise(across(everything(), sum))
+    
     player_raw_stat <- player_df %>% unlist()
     player_df <- player_df %>% mutate_all(~. / player_min * 90)
     
-    # other players data 
-    league_stat <- DATA[league_name %in% COMP_LEAGUES & season == SEASON & summary_min >= MINUTES_FILTER]
+    # other players data, which we compare our selected player to 
+    league_stat <- DATA[league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER]
+    league_stat <- 
+      league_stat %>% 
+        group_by(summary_player) %>% 
+        dplyr::select(-all_of(setdiff(remove_colnames, "summary_min"))) %>%  ## keep summary minutes in the data for now
+        summarise(across(everything(), sum))
+      
     minutes <- league_stat$summary_min
-    league_stat <- league_stat %>% dplyr::select(-all_of(remove_colnames))
+    
+    colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]
+    
+    league_stat <- league_stat %>% dplyr::select(-all_of(colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]))
     league_stat <- league_stat %>% mutate_all(~. / minutes * 90)
     
     # now I need to grab percentiles of player's per 90 statistics using data of selected plaeyrs 
@@ -209,21 +246,22 @@ all_features_quantiles_density <-
     player_df_percentile <- 
       league_stat %>% 
         summarise(across(everything(), 
+                         # calculate percentiles using unique values of metrics of other players 
                          ~sum(unique(.) <= player_stat[match(cur_column(), names(league_stat))])/length(unique(.))
                          )
                   ) -> int_res 
     
-    namess <- names(int_res)
+    names <- names(int_res)
     int_res <- int_res %>% t()
     
     f <- data.frame(
-      namess, 
+      names, 
       player_raw_stat, 
       player_stat, 
       int_res 
     ) 
     
-    f$stat_cat <- sub("_.*", "", f$namess)
+    f$stat_cat <- sub("_.*", "", f$names)
 
     ggplotly(
       ggplot(data = f, 
@@ -245,31 +283,34 @@ similar_players <-
     TARGET_SIMILAR_PLAYERS,
     FEATURES_LIST, 
     COMP_LEAGUES, 
-    RETURN_VECTOR
+    RETURN_VECTOR, 
+    AGE_FILTER
   ){
     
-    df_player <- DATA[summary_player == PLAYER & season == SEASON ] %>% 
+    df_player <- DATA[summary_player == PLAYER & season %in% SEASON ] %>% 
       
       select(all_of(
-          c(FEATURES_LIST, "summary_player", "summary_min", 'team_name')
+          c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', 'summary_age', 'all_positions')
         ))
     
     team <- df_player$team_name
     player_min <- df_player$summary_min
     
-    df <- DATA[league_name %in% COMP_LEAGUES & season == SEASON & summary_min >= MINUTES_FILTER & team_name != team] %>% 
+    df <- DATA[league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER & team_name != team] %>% 
       
       select(all_of(
-          c(FEATURES_LIST, "summary_player", "summary_min", 'team_name')
+          c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', 'summary_age', 'all_positions')
         ))
     
     players = df$summary_player
     minutes = df$summary_min
     team_name = df$team_name
     league_name = df$league_name
+    all_positions  = df$all_positions
+    summary_age = df$summary_age
     
-    df <- df %>% select(-summary_player, -summary_min, -team_name)
-    df_player <- df_player %>% select(-summary_player, -summary_min, -team_name)
+    df <- df %>% select(-summary_player, -summary_min, -team_name, -all_positions, -summary_age)
+    df_player <- df_player %>% select(-summary_player, -summary_min, -team_name, -all_positions, -summary_age)
     
     df <- df %>% mutate_all(~. / minutes * 90)
     df_player <- df_player %>% mutate_all(~. / player_min * 90)
@@ -282,16 +323,19 @@ similar_players <-
     
     f$scaled_dist <- with(f, (sum - 0) / (max(sum) - 0))
       
-    f <- cbind(f, players, minutes, team_name, league_name)
+    f <- cbind(f, players, minutes, team_name, league_name, all_positions, summary_age)
     
     f <- f %>% arrange(scaled_dist)
     
     if(RETURN_VECTOR == "N"){
-      return(f %>% select(players, league_name, team_name, minutes, scaled_dist) %>% head(TARGET_SIMILAR_PLAYERS))
+      return(f %>% 
+               select(players, league_name, team_name, minutes, all_positions, summary_age, scaled_dist) %>% 
+               filter(summary_age <= AGE_FILTER) %>% 
+               head(TARGET_SIMILAR_PLAYERS))
     }
     
     if(RETURN_VECTOR == "Y"){
-      return(f %>% select(players) %>% head(TARGET_SIMILAR_PLAYERS) %>% unlist())
+      return(f %>% select(players) %>% filter(summary_age <= AGE_FILTER) %>% head(TARGET_SIMILAR_PLAYERS) %>% unlist())
     }
   }
 
@@ -305,30 +349,34 @@ similar_players_pca_plot <-
     COMP_LEAGUES,
     COLOR) {
     
-      df_player <- DATA[summary_player == PLAYER & season == SEASON ] %>% 
+      df_player <- DATA[summary_player == PLAYER & season %in% SEASON ] %>% 
         
         select(all_of(
-            c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', "league_name")
+            c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', "league_name", 'all_positions', 'summary_age')
           ))
       
       player <- df_player$summary_player
       team <- df_player$team_name
       player_min <- df_player$summary_min
       player_league <- df_player$league_name
-      
-      df <- DATA[league_name %in% COMP_LEAGUES & season == SEASON & summary_min >= MINUTES_FILTER & team_name != team] %>% 
+      player_positions  = df_player$all_positions
+      player_age = df_player$summary_age
+    
+      df <- DATA[league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER & team_name != team] %>% 
         
         select(all_of(
-            c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', "league_name")
+            c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', "league_name", 'all_positions', 'summary_age')
           ))
       
       players = df$summary_player
       minutes = df$summary_min
       team_name = df$team_name
       league_name = df$league_name
+      all_positions  = df$all_positions
+      summary_age = df$summary_age
       
-      df <- df %>% select(-summary_player, -summary_min, -team_name, -league_name)
-      df_player <- df_player %>% select(-summary_player, -summary_min, -team_name, -league_name)
+      df <- df %>% select(-summary_player, -summary_min, -team_name, -league_name, -all_positions, -summary_age)
+      df_player <- df_player %>% select(-summary_player, -summary_min, -team_name, -league_name, -all_positions, -summary_age)
       
       df <- df %>% mutate_all(~. / minutes * 90)
       df_player <- df_player %>% mutate_all(~. / player_min * 90)
@@ -430,19 +478,46 @@ server_side <-
       renderTable(
         game_and_min_summary(
           PLAYER = input$player_typed_name, 
-          SEASON = input$select_season,
+          SEASON %in% input$select_season,
           DATA = dash_df)
       )
         
+        helper_reactive_seaons <- 
+          reactive(dash_df[league_name == input$league_of_player] %>% select(season) %>% unique() %>% unlist() %>% sort() %>% 
+                     set_names(NULL))
+        
+        output$helper_reactive_seaons_ui <- 
+          renderUI({
+            selectInput(inputId = 'select_season_helper', 
+                         label = "Select a Season", 
+                         choices = helper_reactive_seaons(), 
+                         selected = helper_reactive_seaons()[length(helper_reactive_seaons())])
+        })
+    
     output$display_players <- 
       renderDataTable(
-        dash_df[league_name == input$league_of_player &
-                 season == input$select_season_helper ] %>%
-    
-          dplyr::select(summary_player, team_name) %>% 
-          unique() %>% 
-          arrange(summary_player) %>% 
-          datatable()
+        
+        if(input$position_filter_helper == "All"){
+          dash_df[league_name == input$league_of_player &
+                   season == input$select_season_helper] %>%
+      
+            dplyr::select(summary_player, team_name, all_positions) %>% 
+            unique() %>% 
+            arrange(summary_player) %>% 
+            datatable()
+        }
+        else{
+          dash_df[league_name == input$league_of_player &
+                   season == input$select_season_helper & 
+                    grepl(input$position_filter_helper, all_positions)] %>%
+      
+            dplyr::select(summary_player, team_name, all_positions) %>% 
+            unique() %>% 
+            arrange(summary_player) %>% 
+            datatable()
+
+        }
+        
       )
 
     output$dynamic_table_summary <- 
@@ -514,7 +589,8 @@ server_side <-
           TARGET_SIMILAR_PLAYERS = input$target_sim_players, 
           FEATURES_LIST = best_player_features_vec(), 
           COMP_LEAGUES = input$comp_leagues, 
-          RETURN_VECTOR = "N"
+          RETURN_VECTOR = "N", 
+          AGE_FILTER = input$similar_player_age_filter
           )
         )
     
@@ -528,7 +604,8 @@ server_side <-
           TARGET_SIMILAR_PLAYERS = input$target_sim_players, 
           FEATURES_LIST = best_player_features_vec(), 
           COMP_LEAGUES = input$comp_leagues, 
-          RETURN_VECTOR = "Y"
+          RETURN_VECTOR = "Y", 
+          AGE_FILTER = input$similar_player_age_filter
           )
       )
     
@@ -584,10 +661,14 @@ body <-
                                    
                                    ### need to select players based on the input of league
                                    ###    i.e. display players who are in the league 
-                                   selectInput(inputId = 'select_season_helper', 
-                                               label = "Select a Season", 
-                                               choices = sort(unique(dash_df$season)), 
-                                               selected = '2022/2023')
+                                   
+                                          uiOutput('helper_reactive_seaons_ui'), 
+                                   
+                                   selectInput(inputId = 'position_filter_helper', 
+                                               label = 'Position', 
+                                               choices = positions_short_names, 
+                                               selected = 'All')
+                                   
                                     ), width = 12
                                   )), 
                            
@@ -612,7 +693,10 @@ body <-
                          selectInput(inputId = 'select_season', 
                                                label = "Select a Season", 
                                                choices = sort(unique(dash_df$season)), 
-                                               selected = '2022/2023'), 
+                                               selected = c('2022/2023',
+                                                            '2023'), 
+                                     multiple = T
+                                     ), 
                          
                          selectInput(inputId="feature", 
                                      selected = c(
@@ -625,7 +709,7 @@ body <-
                                      choices=  
                                        setdiff( # remove some columns from options here 
                                          colnames(dash_df), 
-                                         c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min')
+                                         remove_colnames
                                        ),
                                      multiple=TRUE), 
                          
@@ -651,7 +735,13 @@ body <-
                                      label = "Compare From League", 
                                      choices = sort(unique(dash_df$league_name)), 
                                      selected = top_5_leagues, 
-                                     multiple = T)
+                                     multiple = T), 
+                         
+                         numericInput(inputId = 'similar_player_age_filter', 
+                                      label = "Oldest Player Age for Comparisons", 
+                                      value = 30, 
+                                      min = 0, 
+                                      max = max(dash_df$summary_age))
                
                          
                          

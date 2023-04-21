@@ -30,7 +30,7 @@ roll_up_data <-
         ) %>% 
       
       arrange(summary_player, season, team_name) %>% unique() -> positions_data
-
+    
     big_data %>% 
       select(
         -fb_ref_match_link, 	       # to granular 
@@ -53,6 +53,11 @@ roll_up_data <-
     
     rollup_data <- rollup_data[ ,-which(colnames(rollup_data) %in% matches)]
 
+    rollup_data <- 
+      positions_data %>% 
+      left_join(rollup_data, 
+                by = c("season", 'summary_player', 'team_name', 'league_name'))
+    
     return(rollup_data)
   }
 
