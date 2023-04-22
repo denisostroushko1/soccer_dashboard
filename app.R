@@ -283,7 +283,8 @@ similar_players <-
     FEATURES_LIST, 
     COMP_LEAGUES, 
     RETURN_VECTOR, 
-    AGE_FILTER
+    AGE_FILTER1,
+    AGE_FILTER2
   ){
     
     df_player <- DATA[summary_player == PLAYER & season %in% SEASON ] %>% 
@@ -329,12 +330,12 @@ similar_players <-
     if(RETURN_VECTOR == "N"){
       return(f %>% 
                select(players, league_name, team_name, minutes, all_positions, summary_age, scaled_dist) %>% 
-               filter(summary_age <= AGE_FILTER) %>% 
+               filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2) %>% 
                head(TARGET_SIMILAR_PLAYERS))
     }
     
     if(RETURN_VECTOR == "Y"){
-      return(f %>% select(players) %>% filter(summary_age <= AGE_FILTER) %>% head(TARGET_SIMILAR_PLAYERS) %>% unlist())
+      return(f %>% select(players) %>% filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2) %>% head(TARGET_SIMILAR_PLAYERS) %>% unlist())
     }
   }
 
@@ -589,7 +590,8 @@ server_side <-
           FEATURES_LIST = best_player_features_vec(), 
           COMP_LEAGUES = input$comp_leagues, 
           RETURN_VECTOR = "N", 
-          AGE_FILTER = input$similar_player_age_filter
+          AGE_FILTER1 = input$similar_player_age_filter[1],
+          AGE_FILTER2 = input$similar_player_age_filter[2]
           )
         )
     
@@ -604,7 +606,8 @@ server_side <-
           FEATURES_LIST = best_player_features_vec(), 
           COMP_LEAGUES = input$comp_leagues, 
           RETURN_VECTOR = "Y", 
-          AGE_FILTER = input$similar_player_age_filter
+          AGE_FILTER1 = input$similar_player_age_filter[1],
+          AGE_FILTER2 = input$similar_player_age_filter[2]
           )
       )
     
@@ -736,11 +739,11 @@ body <-
                                      selected = top_5_leagues, 
                                      multiple = T), 
                          
-                         numericInput(inputId = 'similar_player_age_filter', 
+                         sliderInput(inputId = 'similar_player_age_filter', 
                                       label = "Oldest Player Age for Comparisons", 
-                                      value = max(dash_df$summary_age), 
-                                      min = 0, 
-                                      max = max(dash_df$summary_age))
+                                      value = c(23,27), 
+                                      min = min(dash_df$summary_age, na.rm = T), 
+                                      max = max(dash_df$summary_age, na.rm = T))
                
                          
                          
