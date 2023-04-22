@@ -43,9 +43,6 @@ names(positions_short_names) <- NULL
 
 remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min', 'all_positions', 
                      'summary_age', 'dominant_position')
-
-dash_df[summary_player == "Gabriel Jesus" & season == '2022/2023'] %>% View()
-
 ########################################################################################################################
 ########################################################################################################################
 
