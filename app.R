@@ -44,6 +44,8 @@ names(positions_short_names) <- NULL
 remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min', 'all_positions', 
                      'summary_age', 'dominant_position')
 
+dash_df[summary_player == "Gabriel Jesus" & season == '2022/2023'] %>% View()
+
 ########################################################################################################################
 ########################################################################################################################
 
@@ -739,7 +741,7 @@ body <-
                          
                          numericInput(inputId = 'similar_player_age_filter', 
                                       label = "Oldest Player Age for Comparisons", 
-                                      value = 30, 
+                                      value = max(dash_df$summary_age), 
                                       min = 0, 
                                       max = max(dash_df$summary_age))
                
