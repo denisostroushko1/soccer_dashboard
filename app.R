@@ -330,12 +330,14 @@ similar_players <-
     if(RETURN_VECTOR == "N"){
       return(f %>% 
                select(players, league_name, team_name, minutes, all_positions, summary_age, scaled_dist) %>% 
+               unique() %>% 
                filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2) %>% 
                head(TARGET_SIMILAR_PLAYERS))
     }
     
     if(RETURN_VECTOR == "Y"){
-      return(f %>% select(players) %>% filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2) %>% head(TARGET_SIMILAR_PLAYERS) %>% unlist())
+      return(f %>% filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2) %>% head(TARGET_SIMILAR_PLAYERS) %>% 
+               select(players) %>% unique() %>% unlist())
     }
   }
 
