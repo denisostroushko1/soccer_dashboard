@@ -43,6 +43,8 @@ names(positions_short_names) <- NULL
 
 remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min', 'all_positions', 
                      'summary_age', 'dominant_position')
+
+
 ########################################################################################################################
 ########################################################################################################################
 
@@ -235,7 +237,7 @@ all_features_quantiles_density <-
       
     minutes <- league_stat$summary_min
     
-    colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]
+#    colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]
     
     league_stat <- league_stat %>% dplyr::select(-all_of(colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]))
     league_stat <- league_stat %>% mutate_all(~. / minutes * 90)
@@ -262,14 +264,36 @@ all_features_quantiles_density <-
     
     f$stat_cat <- sub("_.*", "", f$names)
 
-    ggplotly(
-      ggplot(data = f, 
-             aes(x = int_res, color = stat_cat
-                 )) + 
-        geom_density(size = 1, alpha = .75) + 
-        theme_minimal() + 
-        theme(legend.position = 'none')
+    f_plot <- 
+      f %>% 
+      group_by(stat_cat) %>% 
+      summarize(
+        dens_x =  density(int_res)$x, 
+        dens_y =  density(int_res)$y
+      )
+  
+    with(f_plot, 
+    f_plot %>% 
+      plot_ly(
+        x = ~dens_x, 
+        y = ~dens_y, 
+        color = ~stat_cat, 
+        type = "scatter", 
+        mode = 'lines', 
+        text = 
+          paste(
+            "Category: ", stat_cat, 
+            "<br>Approx. Percentile: ", round(dens_x, 6),
+            "<br>Density: ", round(dens_y, 6)
+            
+          ), 
+        hoverinfo = 'text'
+        
+      ) %>% 
+      layout(xaxis = list(range = c(0, 1), zeroline = F))
     )
+
+    
   }
 
 
