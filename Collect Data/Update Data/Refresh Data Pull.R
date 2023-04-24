@@ -1,15 +1,25 @@
 
-if(file.exists('keys.R') == T){source("keys.R")}
+if(file.exists('keys.R') == T){
+  source("keys.R")
+  
+  Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
+             "AWS_SECRET_ACCESS_KEY" = secret_key, 
+             "AWS_DEFAULT_REGION" =  aws_region)
+  }
 source("Master Packages.R")
 source("Master Functions.R")
+
 
 #####
 #   1) downlaod zip from AWS, both files here now! 
 
-        Sys.setenv("AWS_ACCESS_KEY_ID" = Sys.getenv("access_key"),
-                   "AWS_SECRET_ACCESS_KEY" = Sys.getenv("secret_key"), 
-                   "AWS_DEFAULT_REGION" =  Sys.getenv("aws_region"))
-    
+        if(file.exists('keys.R') == F){
+                Sys.setenv("AWS_ACCESS_KEY_ID" = Sys.getenv("access_key"),
+                           "AWS_SECRET_ACCESS_KEY" = Sys.getenv("secret_key"), 
+                           "AWS_DEFAULT_REGION" =  Sys.getenv("aws_region"))
+            
+          }
+
         tempfile <- tempfile()  
         save_object(object = "s3://shiny-soccer-data/dashboard_data_csv_zip.zip", file = tempfile)
         zipped <- unzip(tempfile)
@@ -46,9 +56,15 @@ links_in_upate <- pull_new_matches_urls(data_to_compare = old_links)
       write.csv(all_links, "already_used_links.csv")
       zip(zipfile = "already_used_links_zip", files = "already_used_links.csv")
       
-      put_object(file = "already_used_links_zip.zip", 
-                 object = "already_used_links_zip.zip",
-                 bucket = Sys.getenv("bucket_name"))
+      if(file.exists('keys.R') == F){
+        put_object(file = "already_used_links_zip.zip", 
+                   object = "already_used_links_zip.zip",
+                   bucket = Sys.getenv("bucket_name"))
+      }else{
+         put_object(file = "already_used_links_zip.zip", 
+                   object = "already_used_links_zip.zip",
+                   bucket = bucket_name)
+      }
   
       unlink('already_used_links.csv')
       unlink('already_used_links_zip.zip')

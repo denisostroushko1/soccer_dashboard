@@ -1,11 +1,6 @@
 
 pull_new_matches_urls <- function(data_to_compare){
-  final <- c()
-  
-        Sys.setenv("AWS_ACCESS_KEY_ID" = Sys.getenv("access_key"),
-                   "AWS_SECRET_ACCESS_KEY" = Sys.getenv("secret_key"), 
-                   "AWS_DEFAULT_REGION" =  Sys.getenv("aws_region"))
-    
+  final <- c() # Learned in the R Efficiency data camp course that this is a horrible practive. Need to pre-allocate the vector and re-populate it.
     
         file_name <- "fixtures_zip.zip" # Replace with the file name of the zipped CSV file
         
