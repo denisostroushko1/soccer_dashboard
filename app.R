@@ -170,40 +170,6 @@ player_season_summary <-
     return(out)
   }
 
-dynamic_table_summary <- 
-  function(
-    DATA, 
-    PLAYER, 
-    TEAM, 
-    SEASON, 
-    COLUMNS){
-
-    func_df <- DATA[
-      summary_player %in% PLAYER & 
-        season %in% SEASON  & team_name %in% TEAM 
-    ] %>% dplyr::select(all_of(c("summary_min", "games_played",COLUMNS))) %>% 
-      summarise(across(everything(), sum))
-    
-    func_df$games_played -> games
-    func_df$summary_min -> minutes
-    
-    func_df <- func_df %>% dplyr::select(-summary_min, -games_played)
-    
-    func_df_per_90 <- func_df
-    func_df_per_game <- func_df
-    
-    func_df_per_90 <- func_df_per_90 %>% mutate(across(COLUMNS, function(x){round(x/minutes * 90, 2)})) 
-    func_df_per_game <- func_df_per_game %>% mutate(across(COLUMNS, function(x){round(x/games, 2)})) 
-    
-    f <- rbind(func_df, func_df_per_90, func_df_per_game) %>% t() %>% data.frame()
-    
-    colnames(f) <- c("Aggregate Numbers", "Per 90 Minutes", "Per Game Played")
-    
-    datatable(f, options = list(columnDefs = list(list(targets = 1:3, width = '500px',
-                                                           className = 'dt-center')))) 
-    
-  }
-
 percentile_data_frame_one_player <- 
   function(
     DATA, 
@@ -305,8 +271,7 @@ find_player_features <-
       rownames(print_res) <- NULL
 
       return(
-        datatable(print_res,
-                  rownames = NULL,
+        datatable(print_res,rownames=FALSE, 
                   options = list(iDisplayLength = N_FEATURES), 
                   caption = "Best Metrics for Selected Player by Percentile Per 90 Minutes") %>% 
           formatRound(columns = c(2:length(print_res)), 
@@ -326,7 +291,7 @@ find_player_features <-
 
       return(
         datatable(print_res,
-                  rownames = NULL,
+                  rownames=FALSE, 
                   options = list(iDisplayLength = N_FEATURES), 
                   caption = "Worst Metrics for Selected Player by Percentile Per 90 Minutes") %>% 
           formatRound(columns = c(2:length(print_res)), 
@@ -379,71 +344,40 @@ all_features_quantiles_density <-
     
   }
 
+dynamic_table_summary <- 
+  function(
+    REACTIVE_DATA,  
+    COLUMNS){
+
+    f <- REACTIVE_DATA[names %in% COLUMNS,]
+    rownames(f) <- NULL
+    
+    colnames(f) <- c("name", "st", "p_st", "st_90", "p_st_90")
+    
+    datatable(f, rownames=FALSE,
+              options = list(autoWidth = TRUE,
+                             columnDefs = list(list(width = '10px', targets = list(2,3,4))))) %>% 
+      
+      formatRound(columns = c(2:length(f)), 
+                      digits = 2)
+    
+  }
+
 pizza_chart <- 
   function(
-    DATA, 
-    COLUMNS,
-    PLAYER, 
-    SEASON, 
-    TEAM, 
-    MINUTES_FILTER, 
-    COMP_LEAGUES
+    REACTIVE_DATA, 
+    COLUMNS
     ){
     
-        # selected player data 
-    player_df <-  DATA[summary_player %in% PLAYER & season %in% SEASON  & team_name %in% TEAM ] 
-    player_min <- sum(player_df$summary_min) 
-    
-    player_df <- player_df %>% dplyr::select(-all_of(remove_colnames)) %>% 
-      summarise(across(everything(), sum))
-    
-    player_raw_stat <- player_df %>% unlist()
-    player_df <- player_df %>% mutate_all(~. / player_min * 90)
-    
-    # other players data, which we compare our selected player to 
-    league_stat <- DATA[league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER]
-    league_stat <- 
-      league_stat %>% 
-        group_by(summary_player) %>% 
-        dplyr::select(-all_of(setdiff(remove_colnames, "summary_min"))) %>%  ## keep summary minutes in the data for now
-        summarise(across(everything(), sum))
-      
-    minutes <- league_stat$summary_min
-    
-#    colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]
-    
-    league_stat <- league_stat %>% dplyr::select(-all_of(colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]))
-    league_stat <- league_stat %>% mutate_all(~. / minutes * 90)
-    
-    # now I need to grab percentiles of player's per 90 statistics using data of selected plaeyrs 
-    player_stat <- player_df %>% unlist()
-    player_df_percentile <- 
-      league_stat %>% 
-        summarise(across(everything(), 
-                         # calculate percentiles using unique values of metrics of other players 
-                         ~sum(unique(.) <= player_stat[match(cur_column(), names(league_stat))])/length(unique(.))
-                         )
-                  ) -> int_res 
-    
-    names <- names(int_res)
-    int_res <- int_res %>% t()
-    
-    f <- data.frame(
-      names, 
-      player_raw_stat, 
-      player_stat, 
-      int_res 
-    ) %>% filter(names %in% COLUMNS) 
-    
-    f$stat_cat <- sub("_.*", "", f$names)
-    
+    f <- REACTIVE_DATA[names %in% COLUMNS,]
+    f$stat_cat <- as.factor(sub("_.*", "", f$names))
     ##################
     # https://www.gettingbluefingers.com/tutorials/radarpizzachart/
         
   ggplot(
     data = f,
     aes(x = names,
-        y = int_res)) +                       #select the columns to plot and sort it so the types of metric are grouped
+        y = percentiles_per_90)) +                       #select the columns to plot and sort it so the types of metric are grouped
   
       geom_bar(
         aes(y=1,
@@ -459,7 +393,7 @@ pizza_chart <-
            colour="white") +                     #insert the values 
   coord_polar() +  
       
-  geom_text(aes(label=round(player_stat,2)), size=7, color = "black")    +                               
+  geom_text(aes(label=round(player_stat_per_90,2)), size=7, color = "black")    +                               
   scale_y_continuous(limits = c(-.10,1))+                                              #create the white part in the middle.   
       
   theme_minimal() +                                                                     #from here it's only themeing. 
@@ -475,7 +409,9 @@ pizza_chart <-
         plot.caption = element_text(hjust=0.5,size=12),
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        plot.margin = margin(5,2,2,2)) 
+        plot.margin = margin(1,1,1,1)) 
+    
+    
       }
 
 
@@ -706,7 +642,7 @@ server_side <-
     
     output$data_dict <- 
       renderDataTable(
-        datatable(data_dict)
+        datatable(data_dict, rownames=FALSE)
       )
     
     output$display_players <- 
@@ -789,10 +725,7 @@ server_side <-
     output$dynamic_table_summary <- 
       renderDataTable(
         dynamic_table_summary(
-          DATA = dash_df, 
-          TEAM = input$select_team_same_name, 
-          PLAYER = input$player_typed_name, 
-          SEASON = input$select_season, 
+          REACTIVE_DATA =  percentiles_data(), 
           COLUMNS = input$feature
         )
       )
@@ -801,12 +734,7 @@ server_side <-
       renderPlot(
         pizza_chart(
           COLUMNS = input$feature, 
-          DATA = dash_df,
-          PLAYER = input$player_typed_name,
-          TEAM = input$select_team_same_name, 
-          SEASON = input$select_season,
-          MINUTES_FILTER = input$minutes_to_limit,          
-          COMP_LEAGUES = input$comp_leagues
+          REACTIVE_DATA = percentiles_data()
 
         )
       )
@@ -884,7 +812,7 @@ sidebar <-
       ,menuItem("Helper Page", tabName = "helper")
       ,menuItem("Player Profile", tabName = "player_profile")
       ,menuItem("Player Profile Junk", tabName = "player_profile_junk")
-      ,menuItem("Player Scouting", tabName = "player_scouting")
+      ,menuItem("Similar Player Scouting", tabName = "player_scouting")
       ,menuItem("Two Player Comparison", tabName = "two_player_comparison")
       
     )
@@ -988,7 +916,11 @@ body <-
                       box(
                         plotlyOutput('all_features_quantiles_density')
                         ,width = 12
-                      )
+                      ), 
+                      box(dataTableOutput('dynamic_table_summary'), width = 6, 
+                          style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
+                               
+                      box(plotOutput('pizza_chart'), width = 6),
                        
                     
                         
@@ -1016,8 +948,15 @@ body <-
                                      selected = c(
                                                   'summary_performance_gls', 
                                                   'summary_expected_xg', 
+                                                  
+                                                  'passing_total_totdist', 
                                                   'passing_total_cmp', 
-                                                  'defensive_tackles_tkl'
+                                                  
+                                                  'defensive_tackles_tkl', 
+                                                  'defensive_challenges_att', 
+                                                  
+                                                  'posession_carries_mis', 
+                                                  'posession_carries_prgc'
                                                   ),
                                      label="Choose Variables for Table",
                                      choices=  
@@ -1048,7 +987,6 @@ body <-
                 ),
                 column(9,
                        fluidRow(
-                                box(plotOutput('pizza_chart'), width = 12),
                                 box(tableOutput('similar_players'), width = 12), 
                                 box(plotlyOutput('similar_players_pca_plot'), width = 12)
                                 
