@@ -349,7 +349,7 @@ dynamic_table_summary <-
     REACTIVE_DATA,  
     COLUMNS){
 
-    f <- REACTIVE_DATA[names %in% COLUMNS,]
+    f <- REACTIVE_DATA[REACTIVE_DATA$names %in% COLUMNS,]
     rownames(f) <- NULL
     
     colnames(f) <- c("name", "st", "p_st", "st_90", "p_st_90")
@@ -369,7 +369,7 @@ pizza_chart <-
     COLUMNS
     ){
     
-    f <- REACTIVE_DATA[names %in% COLUMNS,]
+    f <- REACTIVE_DATA[REACTIVE_DATA$names %in% COLUMNS,]
     f$stat_cat <- as.factor(sub("_.*", "", f$names))
     ##################
     # https://www.gettingbluefingers.com/tutorials/radarpizzachart/
