@@ -49,6 +49,96 @@ remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'ga
 ########################################################################################################################
 
 
+display_players <- 
+  function(
+    FILTER_POS, 
+    FILTER_TEAM, 
+    FILTER_SEASON, 
+    FILTER_LEAGUE
+  ){
+    display <- 
+         
+        if(FILTER_POS == "All" & 
+           FILTER_TEAM == "All"){
+          
+              dash_df[league_name == FILTER_LEAGUE &
+                       season == FILTER_SEASON]
+          
+          }else if(
+            FILTER_POS != "All" & 
+            FILTER_TEAM == "All"){
+            
+              dash_df[league_name == FILTER_LEAGUE &
+                         season == FILTER_SEASON & 
+                    grepl(FILTER_POS, all_positions)]
+            
+          }else if(
+            FILTER_POS == "All" & 
+            FILTER_TEAM != "All"){
+            
+            dash_df[league_name == FILTER_LEAGUE &
+                    season == FILTER_SEASON & 
+                    team_name == FILTER_TEAM]
+          }else if(
+            FILTER_POS != "All" & 
+            FILTER_TEAM != "All"){
+            
+            dash_df[league_name == FILTER_LEAGUE &
+                    season == FILTER_SEASON & 
+                    team_name == FILTER_TEAM  & 
+                    grepl(FILTER_POS, all_positions)]
+          }
+    
+    display %>% dplyr::select(summary_player, summary_age, games_played, summary_min, 
+                            team_name, all_positions) %>% 
+            
+            arrange(summary_player) %>% 
+            rename(
+              `Player Name` = summary_player,
+              Age = summary_age, 
+              `Games Played` = games_played, 
+              `Minutes Played` = summary_min, 
+              `Team` = team_name, 
+              `Featured Positions (Games Appeared)` = all_positions
+            ) %>% 
+            unique() %>% 
+            datatable()
+  }
+
+header_message <- 
+  function(
+    DATA, 
+    PLAYER, 
+    TEAM, 
+    SEASON){
+    
+    age = DATA[
+      summary_player == PLAYER & 
+        season %in% SEASON  & team_name == TEAM 
+    ]$summary_age
+    
+    g = DATA[
+      summary_player == PLAYER & 
+        season %in% SEASON  & team_name == TEAM 
+    ]$games_played
+    
+    dom_pos = DATA[
+      summary_player == PLAYER & 
+        season %in% SEASON  & team_name == TEAM 
+    ]$dominant_position
+    
+    dom_pos <- gsub(" ", "", dom_pos)
+    p <- gsub("[^0-9]", "", dom_pos)
+
+    
+    m <- 
+      paste0(PLAYER, " (", TEAM, ") is ", age, " years old. Their primary position is ",  dom_pos, ", where they featured in ", 
+             p, "% of their total (", g,") league games in ", SEASON)
+    
+    HTML(paste0("<h5>", m))
+    
+  }
+
 ## This really needs to be remade 
 game_and_min_summary <- 
   function(DATA, PLAYER, SEASON){
@@ -81,12 +171,13 @@ dynamic_table_summary <-
   function(
     DATA, 
     PLAYER, 
+    TEAM, 
     SEASON, 
     COLUMNS){
 
     func_df <- DATA[
       summary_player == PLAYER & 
-        season %in% SEASON 
+        season %in% SEASON  & team_name == TEAM 
     ] %>% dplyr::select(all_of(c("summary_min", "games_played",COLUMNS))) %>% 
       summarise(across(everything(), sum))
     
@@ -114,6 +205,7 @@ find_player_features <-
   function(
     DATA, 
     PLAYER, 
+    TEAM, 
     SEASON,
     N_FEATURES, 
     MINUTES_FILTER, 
@@ -123,7 +215,7 @@ find_player_features <-
     
     
     # selected player data 
-    player_df <-  DATA[summary_player == PLAYER & season %in% SEASON ] 
+    player_df <-  DATA[summary_player == PLAYER & season %in% SEASON  & team_name == TEAM ] 
     player_min <- sum(player_df$summary_min) 
     
     player_df <- player_df %>% dplyr::select(-all_of(remove_colnames)) %>% 
@@ -211,6 +303,7 @@ all_features_quantiles_density <-
   function(
     DATA, 
     PLAYER, 
+    TEAM, 
     SEASON,
     MINUTES_FILTER, 
     COMP_LEAGUES
@@ -218,7 +311,7 @@ all_features_quantiles_density <-
     
     
     # selected player data 
-    player_df <-  DATA[summary_player == PLAYER & season %in% SEASON ] 
+    player_df <-  DATA[summary_player == PLAYER & season %in% SEASON  & team_name == TEAM ] 
     player_min <- sum(player_df$summary_min) 
     
     player_df <- player_df %>% dplyr::select(-all_of(remove_colnames)) %>% 
@@ -269,8 +362,8 @@ all_features_quantiles_density <-
       group_by(stat_cat) %>% 
       summarize(
         dens_x =  density(int_res)$x, 
-        dens_y =  density(int_res)$y
-      )
+        dens_y =  density(int_res)$y/ sum(density(int_res)$y)
+      ) 
   
     with(f_plot, 
     f_plot %>% 
@@ -284,7 +377,7 @@ all_features_quantiles_density <-
           paste(
             "Category: ", stat_cat, 
             "<br>Approx. Percentile: ", round(dens_x, 6),
-            "<br>Density: ", round(dens_y, 6)
+            "<br>Approx. Probability: ", round(dens_y, 6)
             
           ), 
         hoverinfo = 'text'
@@ -296,11 +389,118 @@ all_features_quantiles_density <-
     
   }
 
+pizza_chart <- 
+  function(
+    DATA, 
+    COLUMNS,
+    PLAYER, 
+    SEASON, 
+    TEAM, 
+    MINUTES_FILTER, 
+    COMP_LEAGUES
+    ){
+    
+        # selected player data 
+    player_df <-  DATA[summary_player == PLAYER & season %in% SEASON  & team_name == TEAM ] 
+    player_min <- sum(player_df$summary_min) 
+    
+    player_df <- player_df %>% dplyr::select(-all_of(remove_colnames)) %>% 
+      summarise(across(everything(), sum))
+    
+    player_raw_stat <- player_df %>% unlist()
+    player_df <- player_df %>% mutate_all(~. / player_min * 90)
+    
+    # other players data, which we compare our selected player to 
+    league_stat <- DATA[league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER]
+    league_stat <- 
+      league_stat %>% 
+        group_by(summary_player) %>% 
+        dplyr::select(-all_of(setdiff(remove_colnames, "summary_min"))) %>%  ## keep summary minutes in the data for now
+        summarise(across(everything(), sum))
+      
+    minutes <- league_stat$summary_min
+    
+#    colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]
+    
+    league_stat <- league_stat %>% dplyr::select(-all_of(colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]))
+    league_stat <- league_stat %>% mutate_all(~. / minutes * 90)
+    
+    # now I need to grab percentiles of player's per 90 statistics using data of selected plaeyrs 
+    player_stat <- player_df %>% unlist()
+    player_df_percentile <- 
+      league_stat %>% 
+        summarise(across(everything(), 
+                         # calculate percentiles using unique values of metrics of other players 
+                         ~sum(unique(.) <= player_stat[match(cur_column(), names(league_stat))])/length(unique(.))
+                         )
+                  ) -> int_res 
+    
+    names <- names(int_res)
+    int_res <- int_res %>% t()
+    
+    f <- data.frame(
+      names, 
+      player_raw_stat, 
+      player_stat, 
+      int_res 
+    ) %>% filter(names %in% COLUMNS) 
+    
+    f$stat_cat <- sub("_.*", "", f$names)
+    
+    ##################
+    # https://www.gettingbluefingers.com/tutorials/radarpizzachart/
+        
+  ggplot(
+    data = f,
+    aes(x = names,
+        y = int_res)) +                       #select the columns to plot and sort it so the types of metric are grouped
+  
+      geom_bar(
+        aes(y=1,
+            fill=stat_cat),
+        stat="identity",
+        width=1,
+        colour="white",                 #make the whole pizza first
+        alpha=0.5) +     
+      
+  geom_bar(stat="identity"
+           ,width=1,
+           aes(fill=stat_cat),
+           colour="white") +                     #insert the values 
+  coord_polar() +  
+      
+  # geom_label(aes(label=
+  #                  paste0(round(player_stat,2), "(", round(int_res, 2), "th)"), 
+  #                fill=stat_cat, 
+  #                ),
+  #            size=2,color="white",
+  #            show.legend = FALSE
+  #            ) +      #add a label for the value. Change 'label=Per.90' to 'label=Percentile' to show the percentiles
+  geom_text(aes(label=round(player_stat,2)), size=7, color = "black")    +                               
+  scale_y_continuous(limits = c(-.10,1))+                                              #create the white part in the middle.   
+      
+  theme_minimal() +                                                                     #from here it's only themeing. 
+  theme(plot.background = element_rect(fill = "white",color = "white"),
+        panel.background = element_rect(fill = "white",color = "white"),
+   #     text = element_text(size = 25), 
+        legend.position = "top",
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 12, angle = 0),
+        plot.subtitle = element_text(hjust=0.5,size=12),
+        plot.caption = element_text(hjust=0.5,size=12),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        plot.margin = margin(5,2,2,2)) 
+      }
+
 
 similar_players <- 
   function(
     DATA, 
     PLAYER, 
+    TEAM, 
     SEASON, 
     MINUTES_FILTER, 
     TARGET_SIMILAR_PLAYERS,
@@ -311,7 +511,7 @@ similar_players <-
     AGE_FILTER2
   ){
     
-    df_player <- DATA[summary_player == PLAYER & season %in% SEASON ] %>% 
+    df_player <- DATA[summary_player == PLAYER & season %in% SEASON  & team_name == TEAM ] %>% 
       
       select(all_of(
           c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', 'summary_age', 'all_positions')
@@ -369,13 +569,14 @@ similar_players_pca_plot <-
   function(
     DATA, 
     PLAYER, 
+    TEAM, 
     SEASON, 
     MINUTES_FILTER, 
     FEATURES_LIST, 
     COMP_LEAGUES,
     COLOR) {
     
-      df_player <- DATA[summary_player == PLAYER & season %in% SEASON ] %>% 
+      df_player <- DATA[summary_player == PLAYER & season %in% SEASON & team_name == TEAM ] %>% 
         
         select(all_of(
             c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', "league_name", 'all_positions', 'summary_age')
@@ -425,10 +626,10 @@ similar_players_pca_plot <-
           minutes = c(minutes, player_min)
         )
       
-      play_df <- plot_df %>% filter(summary_player == PLAYER)
+      play_df <- plot_df %>% filter(summary_player == PLAYER & team_name == TEAM)
       similar <- plot_df %>% filter(summary_player %in% COLOR)
       
-      plot_df <- plot_df %>% filter(!(summary_player %in% play_df$summary_player | 
+      plot_df <- plot_df %>% filter(!((summary_player %in% play_df$summary_player & team_name == TEAM ) | 
                                         summary_player %in% similar$summary_player))
       
         with(plot_df, 
@@ -500,6 +701,15 @@ server_side <-
         datatable(data_dict)
       )
       
+    output$header_message <- 
+      renderUI(
+        header_message(
+          DATA = dash_df, 
+          TEAM = input$select_team_same_name, 
+          PLAYER = input$player_typed_name, 
+          SEASON = input$select_season)
+      )
+    
     output$game_and_min_summary <- 
       renderTable(
         game_and_min_summary(
@@ -520,46 +730,77 @@ server_side <-
                          selected = helper_reactive_seaons()[length(helper_reactive_seaons())])
         })
     
+        helper_reactive_teams <- 
+          reactive(dash_df[league_name == input$league_of_player] %>% select(team_name) %>% unique() %>% unlist() %>% sort() %>% 
+                     set_names(NULL))
+        
+        output$helper_reactive_teams_ui <- 
+          renderUI({
+            selectInput(inputId = 'select_team_helper', 
+                         label = "Select a Team (or all)", 
+                         choices = c("All", helper_reactive_teams() ), 
+                         selected = "All")
+        })
+        
     output$display_players <- 
       renderDataTable(
-        
-        if(input$position_filter_helper == "All"){
-          dash_df[league_name == input$league_of_player &
-                   season == input$select_season_helper] %>%
-      
-            dplyr::select(summary_player, team_name, all_positions) %>% 
-            unique() %>% 
-            arrange(summary_player) %>% 
-            datatable()
-        }
-        else{
-          dash_df[league_name == input$league_of_player &
-                   season == input$select_season_helper & 
-                    grepl(input$position_filter_helper, all_positions)] %>%
-      
-            dplyr::select(summary_player, team_name, all_positions) %>% 
-            unique() %>% 
-            arrange(summary_player) %>% 
-            datatable()
-
-        }
-        
+        display_players(
+          FILTER_POS = input$position_filter_helper, 
+          FILTER_TEAM = input$select_team_helper, 
+          FILTER_LEAGUE = input$league_of_player, 
+          FILTER_SEASON = input$select_season_helper
+        )
       )
 
+    ## sometimes we have two + players with the same name playing on different teams. If we type in such a name, we need to be able to 
+    ##  select a team 
+    
+    same_name_teams <- 
+      reactive(dash_df[summary_player == input$player_typed_name & 
+                         season %in% input$select_season] %>% 
+                 select(team_name) %>% unique() %>% unlist() %>% sort() %>% 
+                     set_names(NULL))
+    
+      output$same_name_team_picker <- 
+            renderUI({
+              
+              selectInput(inputId = 'select_team_same_name', 
+                           label = "If more than one player has the same name, \npcik a team to precisely identify a player", 
+                           choices = same_name_teams(), 
+                           selected = same_name_teams()[length(same_name_teams())])
+          })
+    
     output$dynamic_table_summary <- 
       renderDataTable(
         dynamic_table_summary(
           DATA = dash_df, 
+          TEAM = input$select_team_same_name, 
           PLAYER = input$player_typed_name, 
           SEASON = input$select_season, 
           COLUMNS = input$feature
         )
       )
+    
+    output$pizza_chart <- 
+      renderPlot(
+        pizza_chart(
+          COLUMNS = input$feature, 
+          DATA = dash_df,
+          PLAYER = input$player_typed_name,
+          TEAM = input$select_team_same_name, 
+          SEASON = input$select_season,
+          MINUTES_FILTER = input$minutes_to_limit,          
+          COMP_LEAGUES = input$comp_leagues
+
+        )
+      )
+    
     best_player_features_vec <-
       reactive(
         find_player_features(
           DATA = dash_df,
           PLAYER = input$player_typed_name,
+          TEAM = input$select_team_same_name, 
           SEASON = input$select_season,
           N_FEATURES = input$top_values_number,
           MINUTES_FILTER = input$minutes_to_limit,
@@ -573,6 +814,7 @@ server_side <-
         find_player_features(
           DATA = dash_df,
           PLAYER = input$player_typed_name,
+          TEAM = input$select_team_same_name, 
           SEASON = input$select_season,
           N_FEATURES = input$top_values_number,
           MINUTES_FILTER = input$minutes_to_limit,
@@ -586,6 +828,7 @@ server_side <-
         find_player_features(
           DATA = dash_df,
           PLAYER = input$player_typed_name,
+          TEAM = input$select_team_same_name, 
           SEASON = input$select_season,
           N_FEATURES = input$top_values_number,
           MINUTES_FILTER = input$minutes_to_limit,
@@ -599,6 +842,7 @@ server_side <-
         all_features_quantiles_density(
           DATA = dash_df,
           PLAYER = input$player_typed_name,
+          TEAM = input$select_team_same_name, 
           SEASON = input$select_season,
           MINUTES_FILTER = input$minutes_to_limit, 
           COMP_LEAGUES = input$comp_leagues
@@ -610,6 +854,7 @@ server_side <-
         similar_players(
           DATA = dash_df, 
           PLAYER = input$player_typed_name,
+          TEAM = input$select_team_same_name, 
           SEASON = input$select_season, 
           MINUTES_FILTER = input$minutes_to_limit,
           TARGET_SIMILAR_PLAYERS = input$target_sim_players, 
@@ -626,6 +871,7 @@ server_side <-
         similar_players(
           DATA = dash_df, 
           PLAYER = input$player_typed_name,
+          TEAM = input$select_team_same_name, 
           SEASON = input$select_season, 
           MINUTES_FILTER = input$minutes_to_limit,
           TARGET_SIMILAR_PLAYERS = input$target_sim_players, 
@@ -642,6 +888,7 @@ server_side <-
         similar_players_pca_plot(
           DATA = dash_df, 
           PLAYER = input$player_typed_name,
+          TEAM = input$select_team_same_name, 
           SEASON = input$select_season, 
           MINUTES_FILTER = input$minutes_to_limit,
           FEATURES_LIST = best_player_features_vec(), 
@@ -691,6 +938,7 @@ body <-
                                    ###    i.e. display players who are in the league 
                                    
                                           uiOutput('helper_reactive_seaons_ui'), 
+                                          uiOutput('helper_reactive_teams_ui'), 
                                    
                                    selectInput(inputId = 'position_filter_helper', 
                                                label = 'Position', 
@@ -717,6 +965,8 @@ body <-
                          textInput(inputId = 'player_typed_name', 
                                    label = "Type in Player Name", 
                                    value = 'Kevin De Bruyne'),
+                         
+                         uiOutput('same_name_team_picker'), 
                          
                          selectInput(inputId = 'select_season', 
                                                label = "Select a Season", 
@@ -778,8 +1028,10 @@ body <-
                 ),
                 column(9,
                        fluidRow(
+                                box(uiOutput('header_message')), 
                                 box(tableOutput('game_and_min_summary'), width = 12), 
                                 box(dataTableOutput('dynamic_table_summary'), width = 12), 
+                                box(plotOutput('pizza_chart'), width = 12),
                                 box(dataTableOutput('best_player_features'), width = 12), 
                                 box(dataTableOutput('worst_player_features'), width = 12),
                                 box(plotlyOutput('all_features_quantiles_density'), width = 12), 
