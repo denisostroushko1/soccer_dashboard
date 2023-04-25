@@ -1,10 +1,10 @@
-Advanced Soccer Statistics
-================
+# Advanced Soccer Statistics
 Denis Ostroushko
 
 <!-- gfm -->
 
-Last successfull data update: 2023-04-25 00:07:10 CST
+Last successfull data update:
+`r paste0(format(Sys.time(), tz="America/Chicago"), " CST")`
 
 # Product Link
 
