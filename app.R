@@ -554,26 +554,34 @@ similar_players_pca <-
     SEASON, 
     MINUTES_FILTER,
     COMP_LEAGUES,
-    FEATURES_LIST
+    FEATURES_LIST,
+    PLAYER,
+    TEAM
     ) {
     
       df <- DATA[league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER ] %>% 
       
       select(all_of(
-          c("summary_player", "summary_min", 'team_name', 'summary_age', 'all_positions', "league_name", FEATURES_LIST)
+          c("summary_player", "summary_min", 'team_name', 'summary_age', 'all_positions', "league_name",'season', FEATURES_LIST)
         ))
       
-    colnames(df) <- c("summary_player", "summary_min", 'team_name', 'summary_age', 'all_positions', "league_name", FEATURES_LIST)
+    colnames(df) <- c("summary_player", "summary_min", 'team_name', 'summary_age', 'all_positions', "league_name",'season', FEATURES_LIST)
     
     minutes <- df$summary_min
     
+    df <- 
+      rbind(
+        df[summary_player == PLAYER & season %in% SEASON & team_name == TEAM ],  ## make sure player of interest is always on top 
+        df[!(summary_player == PLAYER & season %in% SEASON & team_name == TEAM )]
+      )
     
-    df_names <- df[,1:6]
-    df_pca <-   df[,-c(1:6)]
+    df_names <- df[,1:7]  # need to make selection of columns more robust here 
+    df_pca <-   df[,-c(1:7)]
     
     df_per_90 <- df_pca %>%
       mutate(across(all_of(FEATURES_LIST), ~ . / minutes * 90))
 
+    
     df_per_90 <- na.omit(df_per_90)
       
       set.seed(1)
@@ -631,9 +639,10 @@ similar_pca_plot_df <-
         ))
     
     
-    df <- rbind(p_df, df)
+    df <- rbind(p_df, df) # make sure player is on top here 
     
-     summary(PCA_RES)$importance %>% t() -> d
+    summary(PCA_RES)$importance %>% t() -> d
+    
     d <- d[d[,3] < .85, ]
     d <- data.frame(d)
     d$pc <- as.character(rownames(d))
@@ -986,7 +995,9 @@ server_side <-
           SEASON = input$select_season, 
           MINUTES_FILTER = input$minutes_to_limit,
           COMP_LEAGUES = input$comp_leagues, 
-          FEATURES_LIST = best_player_features_vec()
+          FEATURES_LIST = best_player_features_vec(),
+          PLAYER = input$player_typed_name,
+          TEAM = input$select_team_same_name
         )
       )
     
