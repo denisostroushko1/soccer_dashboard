@@ -245,6 +245,9 @@ percentile_data_frame_one_player <-
       percentiles_per_90
     )  
     
+    
+    f$stat_cat <- as.factor(sub("_.*", "", f$names))
+    
     return(f)
   }
 
@@ -309,8 +312,6 @@ all_features_quantiles_density <-
   ){
     
     f <- REACTIVE_DATA
-    
-    f$stat_cat <- as.factor(sub("_.*", "", f$names))
 
     f_plot <- 
       f %>% 
@@ -352,6 +353,7 @@ dynamic_table_summary <-
     f <- REACTIVE_DATA[REACTIVE_DATA$names %in% COLUMNS,]
     rownames(f) <- NULL
     
+    f <- f %>% dplyr::select(-stat_cat)
     colnames(f) <- c("name", "st", "p_st", "st_90", "p_st_90")
     
     datatable(f, rownames=FALSE,
@@ -370,7 +372,6 @@ pizza_chart <-
     ){
     
     f <- REACTIVE_DATA[REACTIVE_DATA$names %in% COLUMNS,]
-    f$stat_cat <- as.factor(sub("_.*", "", f$names))
     ##################
     # https://www.gettingbluefingers.com/tutorials/radarpizzachart/
         
@@ -414,20 +415,15 @@ pizza_chart <-
     
       }
 
-
-similar_players <- 
+similar_players_euclid_dist_data <- 
   function(
     DATA, 
     PLAYER, 
     TEAM, 
     SEASON, 
     MINUTES_FILTER, 
-    TARGET_SIMILAR_PLAYERS,
     FEATURES_LIST, 
-    COMP_LEAGUES, 
-    RETURN_VECTOR, 
-    AGE_FILTER1,
-    AGE_FILTER2
+    COMP_LEAGUES
   ){
     
     df_player <- DATA[summary_player %in% PLAYER & season %in% SEASON  & team_name %in% TEAM ] %>% 
@@ -466,34 +462,55 @@ similar_players <-
     
     f$scaled_dist <- with(f, (sum - 0) / (max(sum) - 0))
       
-    f <- cbind(f, players, minutes, team_name, league_name, all_positions, summary_age)
+    f <- 
+      cbind(
+        players, 
+        minutes, 
+        team_name, 
+        league_name, 
+        all_positions, 
+        summary_age, 
+        f
+      )
+    return(f)
     
-    f <- f %>% arrange(scaled_dist)
-    
-    if(RETURN_VECTOR == "N"){
-      return(f %>% 
-               select(players, league_name, team_name, minutes, all_positions, summary_age, scaled_dist) %>% 
-               unique() %>% 
-               filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2) %>% 
-               head(TARGET_SIMILAR_PLAYERS))
-    }
-    
-    if(RETURN_VECTOR == "Y"){
-      return(f %>% filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2) %>% head(TARGET_SIMILAR_PLAYERS) %>% 
-               select(players) %>% unique() %>% unlist())
-    }
   }
 
-similar_players_pca_plot <- 
+similar_players_table <- 
+  function(
+    REACTIVE_DATA, 
+    TARGET_SIMILAR_PLAYERS, 
+    AGE_FILTER1,
+    AGE_FILTER2
+  ){
+    f <- REACTIVE_DATA %>% 
+      select(
+        players, 
+        summary_age,
+        team_name, 
+        league_name, 
+        minutes, 
+        all_positions, 
+        scaled_dist
+      ) %>% 
+      arrange(scaled_dist) %>% 
+      filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2) %>% 
+      head(TARGET_SIMILAR_PLAYERS) -> out
+    
+      datatable(out)
+      
+  }
+
+similar_players_pca <- 
   function(
     DATA, 
-    PLAYER, 
+    REACTIVE_DATA, 
+    PLAYER,
     TEAM, 
     SEASON, 
-    MINUTES_FILTER, 
     FEATURES_LIST, 
-    COMP_LEAGUES,
-    COLOR) {
+    COLOR
+    ) {
     
       df_player <- DATA[summary_player %in% PLAYER & season %in% SEASON & team_name %in% TEAM ] %>% 
         
@@ -501,112 +518,33 @@ similar_players_pca_plot <-
             c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', "league_name", 'all_positions', 'summary_age')
           ))
       
-      player <- df_player$summary_player
-      team <- df_player$team_name
-      player_min <- df_player$summary_min
-      player_league <- df_player$league_name
-      player_positions  = df_player$all_positions
-      player_age = df_player$summary_age
-    
-      df <- DATA[league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER & team_name != team] %>% 
+      df_player_other <- df_player %>% 
+        select(
+          summary_player, summary_min, team_name, league_name, all_positions, summary_age)
         
-        select(all_of(
-            c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', "league_name", 'all_positions', 'summary_age')
-          ))
+      df_player <- df_player %>% 
+        select(
+          -summary_player, -summary_min, -team_name, -league_name, -all_positions, -summary_age)
+        
       
-      players = df$summary_player
-      minutes = df$summary_min
-      team_name = df$team_name
-      league_name = df$league_name
-      all_positions  = df$all_positions
-      summary_age = df$summary_age
-      
-      df <- df %>% select(-summary_player, -summary_min, -team_name, -league_name, -all_positions, -summary_age)
-      df_player <- df_player %>% select(-summary_player, -summary_min, -team_name, -league_name, -all_positions, -summary_age)
-      
-      df <- df %>% mutate_all(~. / minutes * 90)
       df_player <- df_player %>% mutate_all(~. / player_min * 90)
     
-      df_all <- rbind(df, df_player)
+      df_player <- cbind(df_player_other, df_player)
+      
+      df_all <- rbind(REACTIVE_DATA %>% 
+                        select(-sum, -scaled_dist) %>% 
+                        rename(summary_player = players, 
+                               summary_min = minutes, 
+                               ), 
+                      df_player %>% 
+                        select(-league_name))
       
       set.seed(1)
-      pca_res <- prcomp(df_all, scale. = T)
+      pca_res <- prcomp(df_all %>% 
+                          select(-summary_player, -summary_min, -team_name, -all_positions, -summary_age), scale = T)
       
-      percent_1 <- data.frame(summary(pca_res)[6])[2,1]
-      percent_2 <- data.frame(summary(pca_res)[6])[2,2]
-      
-      plot_df <- 
-        data.frame(
-          PC1 = pca_res$x[,1],
-          PC2 = pca_res$x[,2],
-          summary_player = c(players, player), 
-          team_name = c(team_name, team), 
-          league_name = c(league_name, player_league), 
-          minutes = c(minutes, player_min)
-        )
-      
-      play_df <- plot_df %>% filter(summary_player %in% PLAYER & team_name %in% TEAM)
-      similar <- plot_df %>% filter(summary_player %in% COLOR)
-      
-      plot_df <- plot_df %>% filter(!((summary_player %in% play_df$summary_player & team_name %in% TEAM ) | 
-                                        summary_player %in% similar$summary_player))
-      
-        with(plot_df, 
-             plot_df %>% 
-                plot_ly() %>% 
-                add_trace(
-                  x = ~PC1, 
-                  y = ~PC2, 
-                  color = ~league_name, 
-                  type = "scatter", 
-                  mode = "markers", 
-                  
-                  opacity = 0.5, 
-                  
-                  text = paste(
-                    "Player: ", summary_player, 
-                    "<br>Team: ", team_name, 
-                    "<br>League: ", league_name
-                  ), 
-                  hoverinfo = 'text'
-                ) %>% 
-               
-               add_trace(
-                 x = ~play_df$PC1, 
-                 y = ~play_df$PC2, 
-                 type = "scatter", 
-                 mode = "markers", 
-                 marker = list(color = 'purple', size = 10), 
-                 opacity = .75, 
-                 name = PLAYER, 
-                 text = paste(
-                    "Player: ", play_df$summary_player, 
-                    "<br>Team: ", play_df$team_name, 
-                    "<br>League: ", play_df$league_name
-                  ), 
-                 hoverinfo = 'text'
-               ) %>% 
-               
-               add_trace(
-                 x = ~similar$PC1, 
-                 y = ~similar$PC2, 
-                 type = "scatter", 
-                 mode = "markers", 
-                 marker = list(color = 'red', size = 8), 
-                 opacity = .75, 
-                 name = paste0("Players similar to ", PLAYER), 
-                 text = paste(
-                    "Player: ", similar$summary_player, 
-                    "<br>Team: ", similar$team_name, 
-                    "<br>League: ", similar$league_name
-                  ), 
-                 hoverinfo = 'text'
-               ) %>% 
-               
-               layout(xaxis = list(title = paste0("PC1 Proportion of Variance: ", round(percent_1, 4)*100, "%")),
-                      yaxis = list(title = paste0("PC2 Proportion of Variance: ", round(percent_2, 4)*100, "%"))
-                      )
-        )
+    
+      return(pca_res)
   }
 
 ########################################################################################################################
@@ -739,32 +677,36 @@ server_side <-
         )
       )
     
+    #### similar player scouting poge 
+    
     best_player_features_vec <-
       reactive(
         find_player_features(
-          DATA = dash_df,
-          PLAYER = input$player_typed_name,
-          TEAM = input$select_team_same_name, 
-          SEASON = input$select_season,
+          REACTIVE_DATA = percentiles_data(),
           N_FEATURES = input$top_values_number,
-          MINUTES_FILTER = input$minutes_to_limit,
           RETURN_VECTOR = "Y",
-          BEST_OR_WORST = "", 
-          COMP_LEAGUES = input$comp_leagues
+          BEST_OR_WORST = ""
       ))
     
-    output$similar_players <- 
-      renderTable(
-        similar_players(
+    similar_players_euclid_dist_data_reactive <- 
+      reactive(
+        similar_players_euclid_dist_data(
+          
           DATA = dash_df, 
           PLAYER = input$player_typed_name,
           TEAM = input$select_team_same_name, 
           SEASON = input$select_season, 
           MINUTES_FILTER = input$minutes_to_limit,
-          TARGET_SIMILAR_PLAYERS = input$target_sim_players, 
           FEATURES_LIST = best_player_features_vec(), 
-          COMP_LEAGUES = input$comp_leagues, 
-          RETURN_VECTOR = "N", 
+          COMP_LEAGUES = input$comp_leagues
+        )
+      )
+    
+    output$similar_players_table <- 
+      renderDataTable(
+        similar_players_table(
+          REACTIVE_DATA = similar_players_euclid_dist_data_reactive(), 
+          TARGET_SIMILAR_PLAYERS = input$target_sim_players, 
           AGE_FILTER1 = input$similar_player_age_filter[1],
           AGE_FILTER2 = input$similar_player_age_filter[2]
           )
@@ -772,31 +714,22 @@ server_side <-
     
     similar_players_vector <- 
       reactive(
-        similar_players(
-          DATA = dash_df, 
-          PLAYER = input$player_typed_name,
-          TEAM = input$select_team_same_name, 
-          SEASON = input$select_season, 
-          MINUTES_FILTER = input$minutes_to_limit,
-          TARGET_SIMILAR_PLAYERS = input$target_sim_players, 
-          FEATURES_LIST = best_player_features_vec(), 
-          COMP_LEAGUES = input$comp_leagues, 
-          RETURN_VECTOR = "Y", 
-          AGE_FILTER1 = input$similar_player_age_filter[1],
-          AGE_FILTER2 = input$similar_player_age_filter[2]
-          )
+       similar_players_euclid_dist_data_reactive() %>% 
+          arrange(scaled_dist) %>% 
+          filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2) %>% 
+          head(TARGET_SIMILAR_PLAYERS) %>% 
+          select(players) %>% unlist()
       )
     
-    output$similar_players_pca_plot <- 
-      renderPlotly(
+    similar_players_pca <- 
+      reactive(
         similar_players_pca_plot(
           DATA = dash_df, 
+          REACTIVE_DATA = similar_players_euclid_dist_data_reactive(), 
           PLAYER = input$player_typed_name,
           TEAM = input$select_team_same_name, 
           SEASON = input$select_season, 
-          MINUTES_FILTER = input$minutes_to_limit,
           FEATURES_LIST = best_player_features_vec(), 
-          COMP_LEAGUES = input$comp_leagues, 
           COLOR = similar_players_vector()
         )
       )
@@ -811,8 +744,8 @@ sidebar <-
       menuItem("Introduction", tabName = "intro")
       ,menuItem("Helper Page", tabName = "helper")
       ,menuItem("Player Profile", tabName = "player_profile")
-      ,menuItem("Player Profile Junk", tabName = "player_profile_junk")
       ,menuItem("Similar Player Scouting", tabName = "player_scouting")
+      ,menuItem("Player Profile Junk", tabName = "player_profile_junk")
       ,menuItem("Two Player Comparison", tabName = "two_player_comparison")
       
     )
@@ -917,33 +850,9 @@ body <-
                         plotlyOutput('all_features_quantiles_density')
                         ,width = 12
                       ), 
-                      box(dataTableOutput('dynamic_table_summary'), width = 6, 
-                          style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
-                               
-                      box(plotOutput('pizza_chart'), width = 6),
-                       
-                    
+                      
+                      box(
                         
-              )), 
-      
-      tabItem(tabName = "player_profile_junk",
-              fluidRow(
-                column(3,
-                       box(sidebarMenu(
-                        
-                         textInput(inputId = 'player_typed_name', 
-                                   label = "Type in Player Name", 
-                                   value = 'Kevin De Bruyne'),
-                         
-                         
-                         selectInput(inputId = 'select_season', 
-                                               label = "Select a Season", 
-                                               choices = sort(unique(dash_df$season)), 
-                                               selected = c('2022/2023',
-                                                            '2023'), 
-                                     multiple = T
-                                     ), 
-                         
                          selectInput(inputId="feature", 
                                      selected = c(
                                                   'summary_performance_gls', 
@@ -964,21 +873,50 @@ body <-
                                          colnames(dash_df), 
                                          remove_colnames
                                        ),
-                                     multiple=TRUE), 
-                         
-                         
-                         
-                        sliderInput(inputId = 'similar_player_age_filter', 
-                                      label = "Age Range for Comparisons", 
-                                      value = c(23,27), 
-                                      min = min(dash_df$summary_age, na.rm = T), 
-                                      max = max(dash_df$summary_age, na.rm = T)), 
-                      
-                         numericInput(inputId = 'target_sim_players', 
-                                      label = "Similar Players to Find", 
-                                      min = 0, 
-                                      max = 100, 
-                                      value = 20)
+                                     multiple=TRUE), width = 12
+                      ), 
+                      box("explanation", width = 12), 
+                      box(dataTableOutput('dynamic_table_summary'), width = 6, 
+                          style = "height:500px; overflow-y: scroll;overflow-x: scroll;", 
+                          align = "left"),
+                               
+                      box(plotOutput('pizza_chart'), width = 6)
+                       
+                    
+                        
+              )), 
+      
+      
+      tabItem(tabName = "player_scouting", 
+              fluidRow(
+                box("Player Profile tab shows a chosen number of best statistics for 
+                               a selected player. Analysis here attempts to find players of a similar profile, 
+                               in terms of best statistics", width = 12), 
+                
+                
+                box(sliderInput(inputId = 'similar_player_age_filter', 
+                                  label = "Age Range for Comparisons", 
+                                  value = c(20,35), 
+                                  min = min(dash_df$summary_age, na.rm = T), 
+                                  max = max(dash_df$summary_age, na.rm = T)), 
+                    width = 6), 
+                    
+                 box(numericInput(inputId = 'target_sim_players', 
+                              label = "Similar Players to Find", 
+                              min = 0, 
+                              max = 100, 
+                              value = 20), 
+                     width = 6), 
+                
+                box(dataTableOutput('similar_players_table'), width = 12)
+              )
+              ),
+      
+      tabItem(tabName = "player_profile_junk",
+              fluidRow(
+                column(3,
+                       box(sidebarMenu(
+                        
                
                          
                          
@@ -994,11 +932,10 @@ body <-
                       )
                     )
               ),
+      
+      
       tabItem(tabName = "team_profile", 
               fluidRow("Team Profile")
-              ),
-      tabItem(tabName = "player_scouting", 
-              fluidRow("Player Scouting")
               ),
       tabItem(tabName = "two_player_comparison", 
               fluidRow("Two Player Comparison")
