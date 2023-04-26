@@ -541,7 +541,9 @@ similar_players_table <-
       ) %>%
       arrange(scaled_distance) %>%
       filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2 & 
-               grepl(POSITIONS, all_positions)) %>%
+               grepl(
+                 paste(POSITIONS, collapse = "|"), 
+                 all_positions)) %>%
       head(TARGET_SIMILAR_PLAYERS) -> out
 
      datatable(out, rownames=FALSE)
@@ -1007,7 +1009,9 @@ server_side <-
           arrange(scaled_distance) %>% 
           filter(summary_age >= input$similar_player_age_filter[1] & 
                    summary_age <= input$similar_player_age_filter[2] & 
-                   grepl(input$scouter_positions, all_positions) ) %>% 
+                   grepl(
+                     paste(input$scouter_positions, collapse = "|"), 
+                     all_positions) ) %>% 
           head(input$target_sim_players) %>% 
           select(summary_player)  %>% unlist()
       )
