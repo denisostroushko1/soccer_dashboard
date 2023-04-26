@@ -36,3 +36,38 @@ REACTIVE_DATA <-
           MINUTES_FILTER = MINUTES_FILTER,
           COMP_LEAGUES = top_5_leagues
         )
+
+
+similar_players_pca(
+    DATA = dash_df, 
+    SEASON = SEASON, 
+    MINUTES_FILTER = MINUTES_FILTER,
+    COMP_LEAGUES = top_5_leagues,
+    FEATURES_LIST = REACTIVE_DATA %>% select(names) %>%  head(15) %>% unlist()
+    ) -> PCA_RES
+  
+similar_pca_plot_df(
+  PCA_RES = PCA_RES
+) -> REACTIVE_PCA_DF
+  
+  similar_players_vector <- 
+   
+       similar_players_euclid_dist_data(
+          
+          DATA = dash_df, 
+          REACTIVE_DATA = REACTIVE_DATA, 
+          PLAYER = PLAYER,
+          TEAM = TEAM, 
+          SEASON = SEASON, 
+          MINUTES_FILTER = MINUTES_FILTER,
+          FEATURES_LIST = FEATURES_LIST, 
+          COMP_LEAGUES = top_5_leagues
+        ) %>% 
+    
+          arrange(scaled_dist) %>% 
+          filter(summary_age >= input$similar_player_age_filter[1] & 
+                   summary_age <= input$similar_player_age_filter[2]) %>% 
+          head(input$target_sim_players) %>% 
+          select(players) %>% unlist()
+      
+  
