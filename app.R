@@ -418,6 +418,7 @@ pizza_chart <-
 similar_players_euclid_dist_data <- 
   function(
     DATA, 
+    REACTIVE_DATA, 
     PLAYER, 
     TEAM, 
     SEASON, 
@@ -426,54 +427,63 @@ similar_players_euclid_dist_data <-
     COMP_LEAGUES
   ){
     
-    df_player <- DATA[summary_player %in% PLAYER & season %in% SEASON  & team_name %in% TEAM ] %>% 
+  
+    df <- DATA[league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER & 
+                 !team_name %in% TEAM] %>% 
       
       select(all_of(
-          c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', 'summary_age', 'all_positions')
+          c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', 'summary_age', 'all_positions', "league_name")
         ))
     
-    team <- df_player$team_name
-    player_min <- df_player$summary_min
+    colnames(df) <- c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', 'summary_age', 'all_positions', "league_name")
     
-    df <- DATA[league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER & team_name != team] %>% 
-      
-      select(all_of(
-          c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', 'summary_age', 'all_positions')
-        ))
+    minutes <- df$summary_min
     
-    players = df$summary_player
-    minutes = df$summary_min
-    team_name = df$team_name
-    league_name = df$league_name
-    all_positions  = df$all_positions
-    summary_age = df$summary_age
+    # df_per_90 <- df %>% select(all_of(
+    #       c(FEATURES_LIST)))
+
+    df_per_90 <- df %>%
+      mutate(across(all_of(FEATURES_LIST), ~ . / minutes * 90))
+
+    df_per_90 <- na.omit(df_per_90)
+    # 
+    # colnames(df_per_90) <- FEATURES_LIST
+
+    point <- REACTIVE_DATA[REACTIVE_DATA$names %in% FEATURES_LIST, ] %>% arrange(names)
+
+    point <- point[match(FEATURES_LIST, point$names), ]
+    for_dist <- point$player_stat_per_90 %>% unlist()
+
+    df_per_90 <- df_per_90 %>% select(-all_of(FEATURES_LIST))
     
-    df <- df %>% select(-summary_player, -summary_min, -team_name, -all_positions, -summary_age)
-    df_player <- df_player %>% select(-summary_player, -summary_min, -team_name, -all_positions, -summary_age)
+    colnames(df_per_90) <- c("summary_player", "summary_min", 'team_name', 'summary_age', 'all_positions', "league_name", FEATURES_LIST)
     
-    df <- df %>% mutate_all(~. / minutes * 90)
-    df_player <- df_player %>% mutate_all(~. / player_min * 90)
-    
-    df_player %>% unlist() -> vals_for_distance
-    
-    f <- df %>% mutate(across(.cols = everything(), ~ (. - vals_for_distance[match(cur_column(), names(df))])^2))
-    
-    f <- f %>% mutate(sum = sqrt(rowSums(.)))
-    
-    f$scaled_dist <- with(f, (sum - 0) / (max(sum) - 0))
-      
-    f <- 
+    df_per_90_names <- df_per_90[,1:6]
+    df_per_90_calc <- df_per_90[,-c(1:6)]
+    df_per_90_calc <- na.omit(df_per_90_calc)
+
+     df_per_902 <-
+       df_per_90_calc %>%
+        mutate(across(everything(), ~
+                        (. - for_dist[match(cur_column(), colnames(df_per_90_calc))])^2
+                      ))
+    df_per_902 <- na.omit(df_per_902)
+
+    df_per_902 <-
+      df_per_902 %>%
+      mutate(
+        sum = rowSums(across(everything())),
+        scaled_distance = sum/max(sum)
+      ) %>%
+      select(scaled_distance)
+
+    f <-
       cbind(
-        players, 
-        minutes, 
-        team_name, 
-        league_name, 
-        all_positions, 
-        summary_age, 
-        f
-      )
-    return(f)
-    
+        df_per_90_names, df_per_902
+      ) %>% arrange(scaled_distance)
+  
+    return(head(f))
+
   }
 
 similar_players_table <- 
@@ -483,21 +493,23 @@ similar_players_table <-
     AGE_FILTER1,
     AGE_FILTER2
   ){
-    f <- REACTIVE_DATA %>% 
-      select(
-        players, 
-        summary_age,
-        team_name, 
-        league_name, 
-        minutes, 
-        all_positions, 
-        scaled_dist
-      ) %>% 
-      arrange(scaled_dist) %>% 
-      filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2) %>% 
-      head(TARGET_SIMILAR_PLAYERS) -> out
+    # f <- REACTIVE_DATA %>%
+    #   select(
+    #     players,
+    #     summary_age,
+    #     team_name,
+    #   #  league_name,
+    #     minutes,
+    #     all_positions,
+    #     scaled_dist
+    #   ) %>%
+    #   arrange(scaled_dist) %>%
+    #   filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2) %>%
+    #   head(TARGET_SIMILAR_PLAYERS) -> out
+    # 
+    #   return(datatable(out))
     
-      datatable(out)
+    return(REACTIVE_DATA)
       
   }
 
@@ -693,6 +705,7 @@ server_side <-
         similar_players_euclid_dist_data(
           
           DATA = dash_df, 
+          REACTIVE_DATA = percentiles_data(), 
           PLAYER = input$player_typed_name,
           TEAM = input$select_team_same_name, 
           SEASON = input$select_season, 
@@ -703,7 +716,7 @@ server_side <-
       )
     
     output$similar_players_table <- 
-      renderDataTable(
+      renderTable(
         similar_players_table(
           REACTIVE_DATA = similar_players_euclid_dist_data_reactive(), 
           TARGET_SIMILAR_PLAYERS = input$target_sim_players, 
@@ -908,7 +921,9 @@ body <-
                               value = 20), 
                      width = 6), 
                 
-                box(dataTableOutput('similar_players_table'), width = 12)
+                box(tableOutput('similar_players_table'), width = 12,
+                    style = "overflow-y: scroll;overflow-x: scroll;", )
+            
               )
               ),
       
