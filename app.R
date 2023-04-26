@@ -418,6 +418,38 @@ pizza_chart <-
     
       }
 
+like_pizza_but_bar_graph <- 
+  function(
+    REACTIVE_DATA, 
+    COLUMNS
+  ){
+    f <- REACTIVE_DATA[REACTIVE_DATA$names %in% COLUMNS,] 
+    
+    f$names <- 
+      factor(f$names, 
+             levels = f %>% arrange(stat_cat, percentiles_per_90) %>% select(names) %>% unlist())
+    
+    with(f, 
+         f %>% 
+          plot_ly() %>% 
+            add_trace(
+              x = ~names, 
+              y = ~percentiles_per_90, 
+              color = ~stat_cat, 
+              
+              type = 'bar', 
+              
+              text = paste(
+                'Name: ', names, 
+                "<br>Stat per 90: ", round(player_stat_per_90, 2), 
+                "<br>Percentile: ", round(percentiles_per_90,2)
+              ), 
+              
+              hoverinfo = 'text'
+            )
+    )
+  }
+
 similar_players_euclid_dist_data <- 
   function(
     DATA, 
@@ -494,7 +526,8 @@ similar_players_table <-
     REACTIVE_DATA, 
     TARGET_SIMILAR_PLAYERS, 
     AGE_FILTER1,
-    AGE_FILTER2
+    AGE_FILTER2, 
+    POSITIONS
   ){
     f <- REACTIVE_DATA %>%
       select(
@@ -507,7 +540,8 @@ similar_players_table <-
         scaled_distance
       ) %>%
       arrange(scaled_distance) %>%
-      filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2) %>%
+      filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2 & 
+               grepl(POSITIONS, all_positions)) %>%
       head(TARGET_SIMILAR_PLAYERS) -> out
 
      datatable(out, rownames=FALSE)
@@ -884,7 +918,31 @@ server_side <-
         )
       )
     
+    output$like_pizza_but_bar_graph <- 
+      renderPlotly(
+        like_pizza_but_bar_graph(
+          COLUMNS = input$feature, 
+          REACTIVE_DATA = percentiles_data()  
+        )
+      )
     #### similar player scouting poge 
+    
+    # a dynamic filter that by default selects players in positions that have similar to a player we are scouting 
+    output$scouter_positions_filter <- 
+      renderUI(
+        selectInput(inputId = 'scouter_positions', 
+                     label = 'Position', 
+                     choices = positions_short_names, 
+                     selected = 
+                      strsplit(
+                            gsub("[0-9()]", "", 
+                                 dash_df[summary_player == input$player_typed_name & 
+                                           season %in% input$select_season & 
+                                           team_name %in% input$select_team_same_name ]$all_positions %>% unlist()), 
+                            ", ")[[1]], 
+                    multiple = T
+                      )
+      )
     
     best_player_features_vec <-
       reactive(
@@ -916,7 +974,8 @@ server_side <-
           REACTIVE_DATA = similar_players_euclid_dist_data_reactive(), 
           TARGET_SIMILAR_PLAYERS = input$target_sim_players, 
           AGE_FILTER1 = input$similar_player_age_filter[1],
-          AGE_FILTER2 = input$similar_player_age_filter[2]
+          AGE_FILTER2 = input$similar_player_age_filter[2],
+          POSITIONS = input$scouter_positions
           )
         )
     
@@ -936,7 +995,8 @@ server_side <-
        similar_players_euclid_dist_data_reactive() %>% 
           arrange(scaled_distance) %>% 
           filter(summary_age >= input$similar_player_age_filter[1] & 
-                   summary_age <= input$similar_player_age_filter[2]) %>% 
+                   summary_age <= input$similar_player_age_filter[2] & 
+                   grepl(input$scouter_positions, all_positions) ) %>% 
           head(input$target_sim_players) %>% 
           select(summary_player)  %>% unlist()
       )
@@ -1152,8 +1212,9 @@ body <-
                       box(dataTableOutput('dynamic_table_summary'), width = 6, 
                           style = "height:500px; overflow-y: scroll;overflow-x: scroll;", 
                           align = "left"),
-                               
-                      box(plotOutput('pizza_chart'), width = 6)
+                   
+                      box(plotlyOutput('like_pizza_but_bar_graph'), width = 6)            
+                  #    box(plotOutput('pizza_chart'), width = 6)
                        
                     
                         
@@ -1172,15 +1233,17 @@ body <-
                                   value = c(20,35), 
                                   min = min(dash_df$summary_age, na.rm = T), 
                                   max = max(dash_df$summary_age, na.rm = T)), 
-                    width = 6), 
+                    width = 4), 
                     
                  box(numericInput(inputId = 'target_sim_players', 
                               label = "Similar Players to Find", 
                               min = 0, 
                               max = 100, 
                               value = 20), 
-                     width = 6), 
+                     width = 4), 
         
+                box(uiOutput('scouter_positions_filter'), width = 4),
+                
                 box(dataTableOutput('similar_players_table'), width = 12,
                     style = "overflow-y: scroll;overflow-x: scroll;", ), 
               
@@ -1196,28 +1259,6 @@ body <-
               
               )
               ),
-      
-      tabItem(tabName = "player_profile_junk",
-              fluidRow(
-                column(3,
-                       box(sidebarMenu(
-                        
-               
-                         
-                         
-                       ), width = 12 
-                       )
-                ),
-                column(9,
-                       fluidRow(
-                                box(tableOutput('similar_players'), width = 12), 
-                                box(plotlyOutput('similar_players_pca_plot'), width = 12)
-                                
-                                )
-                      )
-                    )
-              ),
-      
       
       tabItem(tabName = "team_profile", 
               fluidRow("Team Profile")
