@@ -119,63 +119,66 @@ display_players <-
 player_season_summary <- 
   function(DATA, PLAYER, SEASON, TEAM){
     
-    
     DATA[summary_player %in% PLAYER & 
-           team_name %in% TEAM & 
-              season %in% SEASON]$team_name %>% unlist() -> team
+     team_name %in% TEAM & 
+        season %in% SEASON] %>% 
+      
+      group_by(league_name) %>% 
+      summarise(
+        summary_player = summary_player, 
+        summary_age = summary_age, 
+        games_played = games_played, 
+        summary_min = summary_min, 
+        positions = all_positions
+        
+      ) -> out
     
-    DATA[team_name %in% TEAM & 
-              season %in% SEASON]$league_name %>% unlist() -> league
+    league <- DATA[summary_player %in% PLAYER & 
+     team_name %in% TEAM & 
+        season %in% SEASON]$league_name %>% unlist()
     
-    DATA[summary_player %in% PLAYER & 
-              season %in% SEASON]$team_name %>% unlist() -> team
+    ages <- DATA[
+     league_name %in% league & 
+        season %in% SEASON]$summary_age 
     
-    DATA[summary_player %in% PLAYER & 
-              season %in% SEASON]$summary_age %>% unlist() -> age
-    
-    DATA[league_name %in% league & 
-              season %in% SEASON]$summary_age %>% unlist() %>% sort() -> all_ages
-    
-    length(which(all_ages <= age))/length(all_ages) -> age_percentile
-    age_percentile <- paste0(100*round(age_percentile, 2), "%")
-    
-    DATA[summary_player %in% PLAYER & 
-              season %in% SEASON]$games_played %>% unlist()  -> games 
-    
-    DATA[league_name %in% league & 
-              season %in% SEASON]$games_played %>% unlist() %>% sort() -> all_games
-    
-    length(which(all_games <= games))/length(all_games) -> games_percentile
-    games_percentile <- paste0(100*round(games_percentile, 2), "%")
-    
-    DATA[summary_player %in% PLAYER & 
-              season %in% SEASON]$summary_min %>% unlist()  -> mins
-    
-    DATA[league_name %in% league & 
-              season %in% SEASON]$summary_min %>% unlist() %>% sort() -> all_minutes
-    
-    length(which(all_minutes <= mins))/length(all_minutes) -> min_percentile
-    min_percentile <- paste0(100*round(min_percentile, 2), "%")
-    
-    DATA[summary_player %in% PLAYER & 
-              season %in% SEASON]$all_positions %>% unlist()  -> pos
+    out$summary_age <- paste0(out$summary_age, 
+                              paste0("(", 100 * round(
+                                length(which(
+                                  out$summary_age >= ages)) /
+                                  length(ages), 2),"%)"))
     
     
-    out <- 
-      data.frame(
-        `Player Name` = PLAYER, 
-        `Age(League Pecentile)` = paste0(age, " (", age_percentile, ")"), 
-        `Games(League Pecentile)` = paste0(games, " (", games_percentile, ")"),
-        `Minutes(League Pecentile)` = 
-          paste0(
-            prettyNum(mins, big.mark = ","), 
-            " (", min_percentile, ")"
-            ), 
-        `Position` = pos
-      )
+    games <- DATA[
+     league_name %in% league & 
+        season %in% SEASON]$games_played 
     
+    out$games_played <- paste0(out$games_played, 
+                              paste0("(", 100 * round(
+                                length(which(
+                                  out$games_played >= games)) /
+                                  length(games), 2),"%)"))
+    
+    
+    minutes <- DATA[
+     league_name %in% league & 
+        season %in% SEASON]$summary_min 
+    
+    out$summary_min <- paste0(
+                              prettyNum(out$summary_min, big.mark = ","), 
+                              paste0("(", 100 * round(
+                                length(which(
+                                  out$summary_min >= minutes)) /
+                                  length(minutes), 2),"%)"))
+    
+    out$league <- league
+    out$team <- TEAM
+    
+    out <- out %>% select(summary_player, summary_age, 
+                          team, league, games_played, summary_min,
+                          positions)
     rownames(out) = NULL
-    colnames(out) = c('Player Name', 'Age(League Pecentile)', 'Games(League Pecentile)', 'Minutes(League Pecentile)', 
+    colnames(out) = c('Player Name', 'Age(League Pecentile)', 
+                      "Team Name", "League Name",'Games(League Pecentile)', 'Minutes(League Pecentile)', 
                       'Positions')
     return(out)
   }
@@ -357,6 +360,55 @@ find_player_features <-
     
   }
 
+
+one_feature_histogram <- 
+  function(
+    DATA, 
+    PLAYER, 
+    TEAM, 
+    SEASON,
+    MINUTES_FILTER,
+    COMP_LEAGUES, 
+    PLOT_VAR
+    ){
+    
+    data_dict %>% filter(Pretty.Name.from.FBref == PLOT_VAR) %>% 
+      select(Data.Frame.Name) %>% unlist() %>% set_names(NULL) -> plot_var_df
+    
+    stats <- DATA[league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER] %>% 
+      select(
+        all_of(c(plot_var_df, 'summary_player', 'season', 'team_name', 'league_name', "summary_min" ))
+      )
+    
+    stats$per_90 <- stats[[plot_var_df]]/stats$summary_min * 90
+
+    stats[summary_player == PLAYER & 
+            team_name == TEAM & 
+            season %in% SEASON] %>% select(per_90) %>% 
+            unlist()%>% unlist() -> x_t
+    
+    plot_ly(
+      data = stats,
+      alpha = .75
+    ) %>%
+      add_histogram(
+        x = ~per_90,
+        color = ~league_name,
+        text = '',
+        hoverinfo = 'text',
+        histnorm = "probability"
+        ) %>%
+      layout(legend = list(orientation = 'h'),
+             barmode = "stack",
+             yaxis = list(range = c(0,1)), 
+             xaxis = list(title = ''), 
+             title = paste0(PLOT_VAR," per 90 minutes"),
+             shapes = list(list(type = "line", 
+                                x0 = x_t, x1 = x_t, 
+                                y0 = 0, y1 = 1, 
+                                line = list(color = "red", width = 2)))) 
+  
+  }
 
 all_features_quantiles_density <- 
   function(
@@ -1037,6 +1089,19 @@ server_side <-
           BEST_OR_WORST = "WORST"
       ))
     
+    output$one_feature_histogram <- 
+      renderPlotly(
+        one_feature_histogram(
+            DATA = dash_df, 
+            PLAYER = input$player_typed_name,
+            TEAM = input$select_team_same_name, 
+            SEASON = input$select_season,
+            MINUTES_FILTER = input$minutes_to_limit,
+            COMP_LEAGUES = input$comp_leagues, 
+            PLOT_VAR = input$hist_feature
+        )
+    )
+    
     output$all_features_quantiles_density <- 
       renderPlotly(
         all_features_quantiles_density(
@@ -1227,12 +1292,28 @@ sidebar <-
       ,menuItem("Similar Player Scouting", tabName = "player_scouting")
       ,menuItem("Two Player Comparison", tabName = "two_player_comparison")
       ,menuItem("Team Profile", tabName = 'team_profile')
+        
+      # apparently R is looking for all images to be in the www folder. So I created one and stored images there. 
+      # there is no need to refer to the folder explicitly
+    #, tags$img(src = "ball.jpeg", width = "100%", height = "100%")
+      , tags$img(src = "boot.png", width = "100%", height = "100%")
       
     )
 )
 
 body <-
   dashboardBody(
+        tags$head(tags$style(HTML('
+                                /* body */
+                                .content-wrapper, .right-side {
+                                   background-color: #FFFFFF;
+                                }
+                                
+                              .skin-green .main-sidebar {
+                                  background-color:  #36454f;
+                                  font-size: 20px
+                                                      }'
+                              ))), 
     tabItems(
       tabItem(tabName = "intro", 
               "Hello", 
@@ -1262,34 +1343,102 @@ body <-
                                                choices = positions_short_names, 
                                                selected = 'All')
                                    
-                                    ), width = 12,
-                                   style = standard_box_style
+                                    ), width = 12
                                   )), 
                            
                            column(9, 
                                   fluidRow(
-                                    box(dataTableOutput('display_players'), width = 12,
-                                        style = standard_box_style)
+                                    box(dataTableOutput('display_players'), width = 12)
                                   ))
                          )), 
                 tabPanel(title = 'Data Dictionary', 
-                         fluidRow(box(dataTableOutput('data_dict'), width = 12,
-                                      style = standard_box_style)))
+                         fluidRow(box(dataTableOutput('data_dict'), width = 12)))
               )
               ),
       
       tabItem(tabName = "player_profile",
-              fluidRow(class = "text-center", 
+              fluidPage(
                  
+                        HTML("
+                             <p style='font-size: 24px; font-weight: bold;'>Start exploring the data here! </p>
+                             <br> <p style='font-size: 16px; font-weight: bold;'>Couple notes to keep in mind before you dive in:  </p>
+                             
+                             
+                              
+                             
+                             <ul>
+                             
+                             <li> Please type in the player of the name without any additional spaces! 
+                                  Otherwise, you will see a sea of red errors everywhere! </li>
+                             
+                             <li> A lot of players have special characters in their names. I recommend 
+                                that you find their name spelling in the Helper Page - Player Search tab 
+                                and copy paste the results! </li>
+                             
+                             <li> This page has some <em>reactive</em> and <em>nested reactive</em>  
+                             elements, so please allow a few seconds for all of them to load. 
+                             Tables and other output might flicker a few times before they are 
+                             ready for exploration 
+                             </li>
+                             
+                             <li> I tried to include as much helpful notes as posisble, 
+                                  please let me know if you have any other questions! 
+                             </li> 
+                             
+                             <li> Some notable players in the game of soccer are
+                             <b>Lionel Messi</b>, <b> Erling Haaland	</b>, and 
+                                <b> Vinicius Júnior	 </b>. Type in their names to 
+                             see some absolutely incredible stats! 
+                             
+                             
+                             </ul>"), 
+                        
+                        box(width = 12, 
+                            HTML(
+                              "<b> First </b> you get to pick three inputs: Player name, 
+                                Player team (if needed), and season(s) to explore. 
+                              <br> 
+                              <ul> 
+                              
+                              <li>Some competitions are played over the summer, so they 
+                              take place in one calendar year. Most are played 
+                              over the winter, so they include two years, such as 2022/2023. </li>
+                              
+                              <li>When you need to see what season to pick for each league, consult Helper Page - Player Lookup. 
+                              When selecting a competition, the app will display what seasons are available for the competition.
+                              </li>
+                              
+                              <li> 
+                              Sometimes players have similar names, then the App will 
+                              display all such players with similar names in the 
+                              initial summary table. You will need to tweak the 
+                              team filter and select a team you are interested. 
+                              </li>
+                              
+                              <li> For example, 'Rodrigo' are two different players 
+                              who play for 'Real Betis' and 'Leeds United'. 
+                              They are two different players
+                              </ul>
+                              
+                              <br> 
+                              <p style='font-size: 16px; font-weight: bold;'>The first table you see 
+                              provides some essential information about the player. 
+                              </p>
+                              <br>
+                              Percentiles are restricted to player's respective league here, and show many 
+                              many players are below a seleted player in terms of some metric we display. 
+                              
+                              For example, age '30 (75%)' would identify that a player is 30 years old, and 
+                                is odler than 75% of league's players. 
+                              "
+                              )), 
                        #################
                        # IDENTIFY A PLAYER AND DISPLAYER THEIR BASIC BASIC PLAYING TIME AND AGE 
                        box(textInput(inputId = 'player_typed_name', 
                                    label = "Type in Player Name", 
-                                   value = 'Kevin De Bruyne'), width = 4,
-                           style = standard_box_style), 
+                                   value = 'Kevin De Bruyne'), width = 4), 
                          
-                        box( uiOutput('same_name_team_picker'), width = 4,
-                             style = standard_box_style), 
+                        box( uiOutput('same_name_team_picker'), width = 4), 
                 
                         
                         box( selectInput(inputId = 'select_season', 
@@ -1298,50 +1447,64 @@ body <-
                                                selected = c('2022/2023',
                                                             '2023'), 
                                      multiple = T
-                                     ), width = 4,
-                             style = standard_box_style
+                                     ), width = 4
                              ), 
-                       box(tableOutput('player_season_summary'), width = 12, collapsible = T,
-                            style = standard_box_style), 
+                       box(tableOutput('player_season_summary'), width = 12, collapsible = T), 
                        #################
                        # CREATE TABLES WITH BEST AND WORST STATS BY PERCENTILES 
+                       box(width = 12, 
+                           HTML(
+                             "
+                             <b> Onto More Exciting Data! </b> 
+                             
+                             <br> 
+                             
+                             "
+                           )), 
                        box(
                          numericInput(inputId = 'top_values_number', 
                                       label = "Number of Top Features to List:", 
                                       min = 0, 
                                       max = 100, 
-                                      value = 15), width = 4,
-                    style = standard_box_style), 
+                                      value = 10), width = 4), 
                          
                         box(
                          numericInput(inputId = 'minutes_to_limit', 
                                       label = "Limit Players by Minutes Played:", 
                                       min = 0, 
                                       max = max(dash_df$summary_min), 
-                                      value = 1000), width = 4,
-                    style = standard_box_style), 
+                                      value = 1000), width = 4), 
                          
                       box(
                         selectInput(inputId = 'comp_leagues', 
                                      label = "Collect Percentiles Across Leagues:", 
                                      choices = sort(unique(dash_df$league_name)), 
                                      selected = top_5_leagues, 
-                                     multiple = T), width = 4,
-                    style = standard_box_style), 
+                                     multiple = T), width = 4), 
                       box(
                         tabsetPanel(
                           tabPanel(title = "Best Qualities", 
                                    dataTableOutput('best_player_features')),
                           tabPanel(title = "Worst Qualities", 
                                    dataTableOutput('worst_player_features'))
-                        ), width = 9,
-                    style = standard_box_style), 
-                      box("some text to help explain the page", width = 3,
-                    style = standard_box_style), 
+                        ), width = 6), 
+                      box(
+                         selectInput(inputId="hist_feature", 
+                                     selected = 'Expected Goals',
+                                     label="Choose a Variable for Histogram",
+                                     choices=  
+                                       setdiff( # remove some columns from options here 
+                                         data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(), 
+                                         remove_colnames_dict
+                                         )
+                         ),
+                         
+                         plotlyOutput('one_feature_histogram')
+                         
+                        , width = 6), 
                       box(
                         plotlyOutput('all_features_quantiles_density')
-                        ,width = 12,
-                    style = standard_box_style
+                        ,width = 12
                       ), 
                       
                       box(
@@ -1363,16 +1526,13 @@ body <-
                                          data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(), 
                                          remove_colnames_dict
                                        ),
-                                     multiple=TRUE), width = 12,
-                    style = standard_box_style
+                                     multiple=TRUE), width = 12
                       ), 
                       box("explanation", width = 12), 
                       box(dataTableOutput('dynamic_table_summary'), width = 6, 
-                          style = standard_box_style, 
                           align = "left"),
                    
-                      box(plotlyOutput('like_pizza_but_bar_graph'), width = 6,
-                    style = standard_box_style)            
+                      box(plotlyOutput('like_pizza_but_bar_graph'), width = 6)            
                   #    box(plotOutput('pizza_chart'), width = 6)
                        
                     
@@ -1384,8 +1544,7 @@ body <-
               fluidRow(
                 box("Player Profile tab shows a chosen number of best statistics for 
                                a selected player. Analysis here attempts to find players of a similar profile, 
-                               in terms of best statistics", width = 12,
-                    style = standard_box_style), 
+                               in terms of best statistics", width = 12), 
                 
                 
                 box(sliderInput(inputId = 'similar_player_age_filter', 
@@ -1393,35 +1552,28 @@ body <-
                                   value = c(20,35), 
                                   min = min(dash_df$summary_age, na.rm = T), 
                                   max = max(dash_df$summary_age, na.rm = T)), 
-                    width = 4,
-                    style = standard_box_style), 
+                    width = 4), 
                     
                  box(numericInput(inputId = 'target_sim_players', 
                               label = "Similar Players to Display", 
                               min = 0, 
                               max = 100, 
                               value = 10), 
-                     width = 4,
-                    style = standard_box_style), 
+                     width = 4), 
         
-                box(uiOutput('scouter_positions_filter'), width = 4,
-                    style = standard_box_style),
+                box(uiOutput('scouter_positions_filter'), width = 4),
                 
                 box(dataTableOutput('similar_players_table'), 
-                    width = 12,
-                    style = standard_box_style ), 
+                    width = 12), 
               
                 box(
                   tableOutput('similar_pca_table'), 
                   uiOutput('pc_pick_1'), 
                   uiOutput('pc_pick_2'), 
-                  width = 3,
-                    style = standard_box_style
+                  width = 3
                 ), 
-                box(plotlyOutput('similar_pca_plot'), width = 5,
-                    style = standard_box_style), 
-                box(plotlyOutput('similar_dist_dens'), width = 4,
-                    style = standard_box_style)
+                box(plotlyOutput('similar_pca_plot'), width = 5), 
+                box(plotlyOutput('similar_dist_dens'), width = 4)
                 
               
               )
@@ -1440,7 +1592,11 @@ body <-
 shinyApp(
   ui = 
     dashboardPage(
-      dashboardHeader(title =  "Soccer Data", titleWidth = 300),
+      skin = "green", 
+      dashboardHeader(
+        title =  "Soccer Data", 
+        titleWidth = 300
+        ),
       sidebar,
       body
       ),
