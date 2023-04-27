@@ -51,6 +51,8 @@ remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'ga
 
 remove_colnames_dict <- data_dict %>% filter(Data.Frame.Name %in% remove_colnames) %>% select(Pretty.Name.from.FBref) %>% 
   unlist()
+
+standard_box_style = "overflow-y: scroll;overflow-x: scroll;"
 ########################################################################################################################
 ########################################################################################################################
 
@@ -298,11 +300,15 @@ find_player_features <-
 
       rownames(print_res) <- NULL
 
+      print_res$percentiles <- paste0(round(print_res$percentiles, 2) * 100, "%")
+      print_res$percentiles_per_90  <- paste0(round(print_res$percentiles_per_90, 2) * 100, "%")
+      
+      colnames(print_res) <- c("Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile")
       return(
         datatable(print_res,rownames=FALSE, 
                   options = list(iDisplayLength = N_FEATURES), 
                   caption = "Best Metrics for Selected Player by Percentile Per 90 Minutes") %>% 
-          formatRound(columns = c(2:length(print_res)), 
+          formatRound(columns = c(2,4), 
                       digits = 2)
         )
     }
@@ -335,13 +341,15 @@ find_player_features <-
 
       rownames(print_res) <- NULL
 
-
+      print_res$percentiles <- paste0(round(print_res$percentiles, 2) * 100, "%")
+      print_res$percentiles_per_90  <- paste0(round(print_res$percentiles_per_90, 2) * 100, "%")
+      
+      colnames(print_res) <- c("Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile")
       return(
-        datatable(print_res,
-                  rownames=FALSE, 
+        datatable(print_res,rownames=FALSE, 
                   options = list(iDisplayLength = N_FEATURES), 
-                  caption = "Worst Metrics for Selected Player by Percentile Per 90 Minutes") %>% 
-          formatRound(columns = c(2:length(print_res)), 
+                  caption = "Best Metrics for Selected Player by Percentile Per 90 Minutes") %>% 
+          formatRound(columns = c(2,4), 
                       digits = 2)
         )
       
@@ -399,7 +407,8 @@ all_features_quantiles_density <-
         hoverinfo = 'text'
         
       ) %>% 
-      layout(xaxis = list(range = c(0, 1), zeroline = F))
+      layout(xaxis = list(range = c(0, 1), zeroline = F, title = "Percentiles"), 
+             yaxis = list(title = "Approximate Probability"))
     )
 
     
@@ -441,13 +450,17 @@ dynamic_table_summary <-
             player_stat_per_90, 
             percentiles_per_90) -> f
       
-    colnames(f) <- c("Descr", "st", "p_st", "st_90", "p_st_90")
+#    colnames(f) <- c("Descr", "st", "p_st", "st_90", "p_st_90")
     
+    f$percentiles <- paste0(round(f$percentiles, 2) * 100, "%")
+    f$percentiles_per_90  <- paste0(round(f$percentiles_per_90, 2) * 100, "%")
+    
+    colnames(f) <- c("Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile")
     datatable(f, rownames=FALSE,
               options = list(autoWidth = TRUE,
                              columnDefs = list(list(width = '10px', targets = list(2,3,4))))) %>% 
       
-      formatRound(columns = c(2:length(f)), 
+      formatRound(columns = c(2,4), 
                       digits = 2)
     
   }
@@ -553,7 +566,10 @@ like_pizza_but_bar_graph <-
               ), 
               
               hoverinfo = 'text'
-            )
+            ) %>% 
+           
+           layout(xaxis = list(title = ""), 
+                  yaxis = list(title = "Percentile"))
     )
   }
 
@@ -653,6 +669,12 @@ similar_players_table <-
                  all_positions)) %>%
       head(TARGET_SIMILAR_PLAYERS) -> out
 
+    
+    out$scaled_distance <- round(out$scaled_distance, 2)
+    
+    colnames(out) <- c("Player", "Team Name", "League Name", "Player Age", "Minutes Played", "Positions Featured", 
+                       "Distance to Target Player")
+    
      datatable(out, rownames=FALSE)
       
   }
@@ -899,9 +921,12 @@ similar_dist_dens <-
             hoverinfo = 'text'
             
           ) %>% 
-          layout(xaxis = list(range = c(0, 1), zeroline = F), 
+          
+      layout(xaxis = list(range = c(0, 1), zeroline = F, title = ""), 
+             yaxis = list(title = "Approximate Probability"), 
                  legend = list(orientation = 'h')
-          )
+             )
+      
         )
     
   }
@@ -1200,8 +1225,8 @@ sidebar <-
       ,menuItem("Helper Page", tabName = "helper")
       ,menuItem("Player Profile", tabName = "player_profile")
       ,menuItem("Similar Player Scouting", tabName = "player_scouting")
-      ,menuItem("Player Profile Junk", tabName = "player_profile_junk")
       ,menuItem("Two Player Comparison", tabName = "two_player_comparison")
+      ,menuItem("Team Profile", tabName = 'team_profile')
       
     )
 )
@@ -1237,16 +1262,19 @@ body <-
                                                choices = positions_short_names, 
                                                selected = 'All')
                                    
-                                    ), width = 12
+                                    ), width = 12,
+                                   style = standard_box_style
                                   )), 
                            
                            column(9, 
                                   fluidRow(
-                                    box(dataTableOutput('display_players'), width = 12)
+                                    box(dataTableOutput('display_players'), width = 12,
+                                        style = standard_box_style)
                                   ))
                          )), 
                 tabPanel(title = 'Data Dictionary', 
-                         fluidRow(box(dataTableOutput('data_dict'), width = 12)))
+                         fluidRow(box(dataTableOutput('data_dict'), width = 12,
+                                      style = standard_box_style)))
               )
               ),
       
@@ -1257,9 +1285,11 @@ body <-
                        # IDENTIFY A PLAYER AND DISPLAYER THEIR BASIC BASIC PLAYING TIME AND AGE 
                        box(textInput(inputId = 'player_typed_name', 
                                    label = "Type in Player Name", 
-                                   value = 'Kevin De Bruyne'), width = 4), 
+                                   value = 'Kevin De Bruyne'), width = 4,
+                           style = standard_box_style), 
                          
-                        box( uiOutput('same_name_team_picker'), width = 4), 
+                        box( uiOutput('same_name_team_picker'), width = 4,
+                             style = standard_box_style), 
                 
                         
                         box( selectInput(inputId = 'select_season', 
@@ -1268,9 +1298,11 @@ body <-
                                                selected = c('2022/2023',
                                                             '2023'), 
                                      multiple = T
-                                     ), width = 4
+                                     ), width = 4,
+                             style = standard_box_style
                              ), 
-                       box(tableOutput('player_season_summary'), width = 12, collapsible = T), 
+                       box(tableOutput('player_season_summary'), width = 12, collapsible = T,
+                            style = standard_box_style), 
                        #################
                        # CREATE TABLES WITH BEST AND WORST STATS BY PERCENTILES 
                        box(
@@ -1278,32 +1310,38 @@ body <-
                                       label = "Number of Top Features to List:", 
                                       min = 0, 
                                       max = 100, 
-                                      value = 15), width = 4), 
+                                      value = 15), width = 4,
+                    style = standard_box_style), 
                          
                         box(
                          numericInput(inputId = 'minutes_to_limit', 
                                       label = "Limit Players by Minutes Played:", 
                                       min = 0, 
                                       max = max(dash_df$summary_min), 
-                                      value = 1000), width = 4), 
+                                      value = 1000), width = 4,
+                    style = standard_box_style), 
                          
                       box(
                         selectInput(inputId = 'comp_leagues', 
                                      label = "Collect Percentiles Across Leagues:", 
                                      choices = sort(unique(dash_df$league_name)), 
                                      selected = top_5_leagues, 
-                                     multiple = T), width = 4), 
+                                     multiple = T), width = 4,
+                    style = standard_box_style), 
                       box(
                         tabsetPanel(
                           tabPanel(title = "Best Qualities", 
                                    dataTableOutput('best_player_features')),
                           tabPanel(title = "Worst Qualities", 
                                    dataTableOutput('worst_player_features'))
-                        ), width = 9), 
-                      box("some text to help explain the page", width = 3), 
+                        ), width = 9,
+                    style = standard_box_style), 
+                      box("some text to help explain the page", width = 3,
+                    style = standard_box_style), 
                       box(
                         plotlyOutput('all_features_quantiles_density')
-                        ,width = 12
+                        ,width = 12,
+                    style = standard_box_style
                       ), 
                       
                       box(
@@ -1325,14 +1363,16 @@ body <-
                                          data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(), 
                                          remove_colnames_dict
                                        ),
-                                     multiple=TRUE), width = 12
+                                     multiple=TRUE), width = 12,
+                    style = standard_box_style
                       ), 
                       box("explanation", width = 12), 
                       box(dataTableOutput('dynamic_table_summary'), width = 6, 
-                          style = "height:500px; overflow-y: scroll;overflow-x: scroll;", 
+                          style = standard_box_style, 
                           align = "left"),
                    
-                      box(plotlyOutput('like_pizza_but_bar_graph'), width = 6)            
+                      box(plotlyOutput('like_pizza_but_bar_graph'), width = 6,
+                    style = standard_box_style)            
                   #    box(plotOutput('pizza_chart'), width = 6)
                        
                     
@@ -1344,7 +1384,8 @@ body <-
               fluidRow(
                 box("Player Profile tab shows a chosen number of best statistics for 
                                a selected player. Analysis here attempts to find players of a similar profile, 
-                               in terms of best statistics", width = 12), 
+                               in terms of best statistics", width = 12,
+                    style = standard_box_style), 
                 
                 
                 box(sliderInput(inputId = 'similar_player_age_filter', 
@@ -1352,28 +1393,35 @@ body <-
                                   value = c(20,35), 
                                   min = min(dash_df$summary_age, na.rm = T), 
                                   max = max(dash_df$summary_age, na.rm = T)), 
-                    width = 4), 
+                    width = 4,
+                    style = standard_box_style), 
                     
                  box(numericInput(inputId = 'target_sim_players', 
-                              label = "Similar Players to Find", 
+                              label = "Similar Players to Display", 
                               min = 0, 
                               max = 100, 
                               value = 10), 
-                     width = 4), 
+                     width = 4,
+                    style = standard_box_style), 
         
-                box(uiOutput('scouter_positions_filter'), width = 4),
+                box(uiOutput('scouter_positions_filter'), width = 4,
+                    style = standard_box_style),
                 
-                box(dataTableOutput('similar_players_table'), width = 12,
-                    style = "overflow-y: scroll;overflow-x: scroll;", ), 
+                box(dataTableOutput('similar_players_table'), 
+                    width = 12,
+                    style = standard_box_style ), 
               
                 box(
                   tableOutput('similar_pca_table'), 
                   uiOutput('pc_pick_1'), 
                   uiOutput('pc_pick_2'), 
-                  width = 3
+                  width = 3,
+                    style = standard_box_style
                 ), 
-                box(plotlyOutput('similar_pca_plot'), width = 5), 
-                box(plotlyOutput('similar_dist_dens'), width = 4)
+                box(plotlyOutput('similar_pca_plot'), width = 5,
+                    style = standard_box_style), 
+                box(plotlyOutput('similar_dist_dens'), width = 4,
+                    style = standard_box_style)
                 
               
               )
