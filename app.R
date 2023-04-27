@@ -20,6 +20,7 @@ dash_df <- data.table(dash_df)
 
 data_dict <- read_csv('FBref Advanced Soccer Data Disctionary.csv')[,-1]
 
+
     original <- colnames(dash_df)
     reduced <- colnames(dash_df)[ which(colnames(dash_df) %in% data_dict$`Data Frame Name`) ]
     
