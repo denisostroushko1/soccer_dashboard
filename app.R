@@ -20,6 +20,7 @@ dash_df <- data.table(dash_df)
 
 data_dict <- read_csv('FBref Advanced Soccer Data Disctionary.csv')[,-1]
 
+data_dict <- data_dict %>% filter(!is.na(Pretty.Name.from.FBref ))
 
     original <- colnames(dash_df)
     reduced <- colnames(dash_df)[ which(colnames(dash_df) %in% data_dict$Data.Frame.Name) ]
@@ -48,7 +49,8 @@ names(positions_short_names) <- NULL
 remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min', 'all_positions', 
                      'summary_age', 'dominant_position')
 
-
+remove_colnames_dict <- data_dict %>% filter(Data.Frame.Name %in% remove_colnames) %>% select(Pretty.Name.from.FBref) %>% 
+  unlist()
 ########################################################################################################################
 ########################################################################################################################
 
@@ -250,9 +252,7 @@ percentile_data_frame_one_player <-
       player_stat_per_90, 
       percentiles_per_90
     )  
-    
-    
-    f$stat_cat <- as.factor(sub("_.*", "", f$names))
+
     
     return(f)
   }
@@ -271,8 +271,27 @@ find_player_features <-
     
     if(RETURN_VECTOR == "N" & BEST_OR_WORST == "BEST"){
       
+      data_dict_f <- 
+        data_dict %>% 
+        select(
+          Data.Frame.Name, 
+          Pretty.Name.from.FBref
+        ) %>% 
+        mutate(
+          names = Data.Frame.Name, 
+          descr = Pretty.Name.from.FBref
+        )
+      
       print_res <-
+        
         REACTIVE_DATA %>% 
+        
+        left_join(
+          data_dict_f, 
+          by = "names"
+        ) %>% 
+        select(-names, -Data.Frame.Name, - Pretty.Name.from.FBref ) %>% 
+        select(descr, everything() ) %>% 
         arrange(-percentiles_per_90) %>%
         
         head(N_FEATURES)
@@ -289,14 +308,33 @@ find_player_features <-
     }
     
     if(RETURN_VECTOR == "N" & BEST_OR_WORST == "WORST"){
+      data_dict_f <- 
+        data_dict %>% 
+        select(
+          Data.Frame.Name, 
+          Pretty.Name.from.FBref
+        ) %>% 
+        mutate(
+          names = Data.Frame.Name, 
+          descr = Pretty.Name.from.FBref
+        )
       
       print_res <-
+        
         REACTIVE_DATA %>% 
+        
+        left_join(
+          data_dict_f, 
+          by = "names"
+        ) %>% 
+        select(-names, -Data.Frame.Name, - Pretty.Name.from.FBref ) %>% 
+        select(descr, everything() ) %>% 
         arrange(percentiles_per_90) %>%
         
         head(N_FEATURES)
 
       rownames(print_res) <- NULL
+
 
       return(
         datatable(print_res,
@@ -319,6 +357,22 @@ all_features_quantiles_density <-
     
     f <- REACTIVE_DATA
 
+    data_dict_f <- 
+        data_dict %>% 
+        select(
+          Data.Frame.Name, 
+          Pretty.Name.from.FBref,
+          stat_cat
+        ) %>% 
+        mutate(
+          names = Data.Frame.Name, 
+          descr = Pretty.Name.from.FBref
+        )
+    
+    f <- f %>% 
+      left_join(data_dict_f, 
+                by = 'names')
+    
     f_plot <- 
       f %>% 
       group_by(stat_cat) %>% 
@@ -356,11 +410,38 @@ dynamic_table_summary <-
     REACTIVE_DATA,  
     COLUMNS){
 
-    f <- REACTIVE_DATA[REACTIVE_DATA$names %in% COLUMNS,]
+    
+    data_dict_f <- 
+        data_dict %>% 
+        select(
+          Data.Frame.Name, 
+          Pretty.Name.from.FBref,
+          stat_cat
+        ) %>% 
+        mutate(
+          names = Data.Frame.Name, 
+          descr = Pretty.Name.from.FBref
+        )
+    
+    f <- REACTIVE_DATA
     rownames(f) <- NULL
     
-    f <- f %>% dplyr::select(-stat_cat)
-    colnames(f) <- c("name", "st", "p_st", "st_90", "p_st_90")
+    f <- 
+      f %>% 
+      left_join(data_dict_f, 
+                by = 'names') 
+    
+    
+    f <- f[f$descr %in% COLUMNS,]
+    
+    f %>% 
+      select(descr, 
+            player_stat, 
+            percentiles,
+            player_stat_per_90, 
+            percentiles_per_90) -> f
+      
+    colnames(f) <- c("Descr", "st", "p_st", "st_90", "p_st_90")
     
     datatable(f, rownames=FALSE,
               options = list(autoWidth = TRUE,
@@ -426,24 +507,47 @@ like_pizza_but_bar_graph <-
     REACTIVE_DATA, 
     COLUMNS
   ){
-    f <- REACTIVE_DATA[REACTIVE_DATA$names %in% COLUMNS,] 
     
-    f$names <- 
-      factor(f$names, 
-             levels = f %>% arrange(stat_cat, percentiles_per_90) %>% select(names) %>% unlist())
+
+    data_dict_f <- 
+        data_dict %>% 
+        select(
+          Data.Frame.Name, 
+          Pretty.Name.from.FBref,
+          stat_cat
+        ) %>% 
+        mutate(
+          names = Data.Frame.Name, 
+          descr = Pretty.Name.from.FBref
+        )
+    
+    f <- REACTIVE_DATA
+    rownames(f) <- NULL
+    
+    f <- 
+      f %>% 
+      left_join(data_dict_f, 
+                by = 'names') 
+    
+    
+    f <- f[f$descr %in% COLUMNS,]
+    
+    f$descr <- 
+      factor(f$descr, 
+             levels = f %>% arrange(stat_cat, percentiles_per_90) %>% select(descr) %>% unlist())
     
     with(f, 
          f %>% 
           plot_ly() %>% 
             add_trace(
-              x = ~names, 
+              x = ~descr, 
               y = ~percentiles_per_90, 
               color = ~stat_cat, 
               
               type = 'bar', 
               
               text = paste(
-                'Name: ', names, 
+                'Name: ', descr, 
                 "<br>Stat per 90: ", round(player_stat_per_90, 2), 
                 "<br>Percentile: ", round(percentiles_per_90,2)
               ), 
@@ -1206,23 +1310,20 @@ body <-
                         
                          selectInput(inputId="feature", 
                                      selected = c(
-                                                  'summary_performance_gls', 
-                                                  'summary_expected_xg', 
-                                                  
-                                                  'passing_total_totdist', 
-                                                  'passing_total_cmp', 
-                                                  
-                                                  'defensive_tackles_tkl', 
-                                                  'defensive_challenges_att', 
-                                                  
-                                                  'posession_carries_mis', 
-                                                  'posession_carries_prgc'
+                                                  'Goals'
+                                                  ,'Expected Goals'
+                                                  ,'Passes Completed'
+                                                  ,'Total Passing Distance'
+                                                  ,'Number of players tackled'	
+                                                  ,'Dribbles Challenged'
+                                                  ,'Progressive Carries'	
+                                                  ,'Miscontrols'
                                                   ),
                                      label="Choose Variables for Table",
                                      choices=  
                                        setdiff( # remove some columns from options here 
-                                         colnames(dash_df), 
-                                         remove_colnames
+                                         data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(), 
+                                         remove_colnames_dict
                                        ),
                                      multiple=TRUE), width = 12
                       ), 
@@ -1257,7 +1358,7 @@ body <-
                               label = "Similar Players to Find", 
                               min = 0, 
                               max = 100, 
-                              value = 20), 
+                              value = 10), 
                      width = 4), 
         
                 box(uiOutput('scouter_positions_filter'), width = 4),
