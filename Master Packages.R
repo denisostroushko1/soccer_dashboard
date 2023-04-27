@@ -27,3 +27,4 @@ library(DT)
 
 library(feather)
 library(rsconnect)
+library(stringr)

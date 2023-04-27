@@ -51,6 +51,7 @@ jobs:
               any::feather
               any::secret
               any::rsconnect
+              any::stringr
                
       - name: Execute R Script
         env:

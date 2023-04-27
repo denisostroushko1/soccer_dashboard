@@ -1275,11 +1275,12 @@ body <-
               )
               ),
       
-      tabItem(tabName = "team_profile", 
-              fluidRow("Team Profile")
-              ),
       tabItem(tabName = "two_player_comparison", 
-              fluidRow("Two Player Comparison")
+              fluidRow("Two Player Comparison: COMING SOOOOOON")
+              ), 
+      
+      tabItem(tabName = "team_profile", 
+              fluidRow("Team Profile: COMING SOOOOOON, but later than player comparison")
               )
   ))
 
