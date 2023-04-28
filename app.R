@@ -377,19 +377,23 @@ one_feature_histogram <-
     data_dict %>% filter(Pretty.Name.from.FBref == PLOT_VAR) %>% 
       select(Data.Frame.Name) %>% unlist() %>% set_names(NULL) -> plot_var_df
     
-    stats <- DATA[(league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER) | 
-                    (summary_player == PLAYER & team_name == TEAM & season %in% SEASON)
+    stats <- DATA[league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER
                   ] %>% 
       select(
         all_of(c(plot_var_df, 'summary_player', 'season', 'team_name', 'league_name', "summary_min" ))
       )
     
+    stats2 <- DATA[
+                    (summary_player == PLAYER & team_name == TEAM & season %in% SEASON)
+                  ] %>% 
+      select(
+        all_of(c(plot_var_df, 'summary_player', 'season', 'team_name', 'league_name', "summary_min" ))
+      ) %>% unique()
+     
     stats$per_90 <- stats[[plot_var_df]]/stats$summary_min * 90
+    stats2$per_90 <- stats2[[plot_var_df]]/stats2$summary_min * 90
 
-    stats[summary_player == PLAYER & 
-            team_name == TEAM & 
-            season %in% SEASON] %>% select(per_90) %>% 
-            unlist()%>% unlist() -> x_t
+    stats2 %>% select(per_90) %>% unlist()-> x_t
     
     plot_ly(
       data = stats,

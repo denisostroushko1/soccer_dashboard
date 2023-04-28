@@ -6,6 +6,7 @@ TEAM = 'Manchester City'
 FEATURES_LIST = colnames(dash_df)[15:40]
 COMP_LEAGUES = top_5_leagues
 MINUTES_FILTER = 800
+PLOT_VAR = "Expected Goals"
 
 
 FEATURES_LIST = c(
