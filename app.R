@@ -1394,6 +1394,7 @@ body <-
                              </ul>"), 
                         
                         box(width = 12, 
+                            background = 'aqua', 
                             HTML(
                               "<b> First </b> you get to pick three inputs: Player name, 
                                 Player team (if needed), and season(s) to explore. 
@@ -1452,13 +1453,33 @@ body <-
                        box(tableOutput('player_season_summary'), width = 12, collapsible = T), 
                        #################
                        # CREATE TABLES WITH BEST AND WORST STATS BY PERCENTILES 
-                       box(width = 12, 
+                       box(width = 12, background = 'aqua', 
                            HTML(
                              "
                              <b> Onto More Exciting Data! </b> 
                              
                              <br> 
-                             
+                             Now you get to pick how we calculate different statistics for a selected player. 
+                             There are two many statistics we present for the player, based on what they did over the course of the season. 
+                            <ul> 
+                            
+                            <li> Aggregate per season is the total value </li>
+                            
+                            <li> We turn aggregate statistics to 'per 90 minutes' statistic to put every player on 
+                            the level ground for comparisons</li>
+                            
+                            </ul> 
+                            
+                            <br> 
+                            We scale statistics to 'per 90 minutes' so that we can accurately assess how well a player 
+                            does a certain action in a constained amount of time. 90 minutes is a length of a soccer match. 
+                            
+                            <br> All percentiles are derived using a subset of all available players. 
+                            By defaul, you compare 'performance per 90 minutes' for players who played at least 1,000 minutes 
+                            in the top 5 european leagues. 
+                            
+                            <br> Percentile gives you just one summary statistic, so feel free to select a variable of interest 
+                            to display a shpae of the distribtuion. A vertical red line represents a percentile of a selected player.  
                              "
                            )), 
                        box(
@@ -1502,10 +1523,30 @@ body <-
                          plotlyOutput('one_feature_histogram')
                          
                         , width = 6), 
+                      
+                      box(width = 12, background = 'aqua', 
+                          HTML("
+                               
+                               So far you saw a summary of best and worst stats for a selected player. Density curves 
+                               summarize the distrbituion of all percentiles for each statistic, colored by a major category 
+                               of stats. Having a peak to the right means that a player excels in a given category. 
+                               
+                               ")
+                          ), 
+                      
                       box(
                         plotlyOutput('all_features_quantiles_density')
                         ,width = 12
                       ), 
+                      
+                      box(width = 12, background = 'aqua', 
+                          HTML("
+                               
+                               And if you want to hand pick categories for each player you can do so in this section! 
+                               A filter below gives you in option to display a statistic in a tabke and on a bar graph. 
+                               
+                               ")
+                          ), 
                       
                       box(
                         
@@ -1542,9 +1583,20 @@ body <-
       
       tabItem(tabName = "player_scouting", 
               fluidRow(
-                box("Player Profile tab shows a chosen number of best statistics for 
-                               a selected player. Analysis here attempts to find players of a similar profile, 
-                               in terms of best statistics", width = 12), 
+                box("
+                    <p style='font-size: 16px; font-weight: bold;'>
+                    Now that you saw what stats a player excells at, are you curious what other players do the same things 
+                    just as good? Maybe you are a scount that wants to find a replacement for an aging star? 
+                    </p>
+                    
+                    Uisng a set of best statistics, on the per 90 minutes scale, we calculate euclidian distance from each 
+                    player to a player of interest. This distance is then scaled to 0-1 scale, for convinience.
+                    
+                    On this page you will see a number of similar players. By default, we include a vast range of ages, 
+                    but you can limit it and focus on scouting young outstanding players. 
+                    
+                    You can also pick positions that we scout, by default all positions for a player of interest are selected. 
+                    ", width = 12, background = 'aqua'), 
                 
                 
                 box(sliderInput(inputId = 'similar_player_age_filter', 
@@ -1566,6 +1618,27 @@ body <-
                 box(dataTableOutput('similar_players_table'), 
                     width = 12), 
               
+                box(width = 12, 
+                    background = 'aqua', 
+                    HTML("
+                         
+                         <p style='font-size: 16px; font-weight: bold;'>
+                          Tables are fun and all, but how do these 10-15 players look compared to everyone in the comparison 
+                         subset!? 
+                          </p>
+                         
+                         Unfortunately, we can't make a plot with 15 axes, so we need to reduce the dimensions. Uisng PCA, we 
+                         can achive this goal. A small summary table shows how much variation if contained within the first X
+                         principal components. A rule of thumb is to have around 80% of original variation. 
+                         <br> 
+                         We can then use the first two principal components to make a scatter plot that, sort of, shows the 
+                         spead of these high dimensional data, and where similar players are located when compared to the target
+                         player, as well as all other players. 
+                         
+                         <br> What about the distibution of distances? I don't know honestly, after I made a plot I could not find a use for it. 
+                         
+                         ")), 
+                
                 box(
                   tableOutput('similar_pca_table'), 
                   uiOutput('pc_pick_1'), 
@@ -1573,7 +1646,17 @@ body <-
                   width = 3
                 ), 
                 box(plotlyOutput('similar_pca_plot'), width = 5), 
-                box(plotlyOutput('similar_dist_dens'), width = 4)
+                box(plotlyOutput('similar_dist_dens'), width = 4), 
+                
+                box(width = 12, background = 'light-blue', 
+                    HTML(
+                      "
+                      <p style='font-size: 24px; font-weight: bold;'>
+                          Now you can start all over again, by picking a name of a similar players and looking at their 
+                      stats at the previous page. Have fun! 
+                          </p>
+                      "
+                    ))
                 
               
               )
