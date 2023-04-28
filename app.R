@@ -280,7 +280,8 @@ find_player_features <-
         data_dict %>% 
         select(
           Data.Frame.Name, 
-          Pretty.Name.from.FBref
+          Pretty.Name.from.FBref, 
+          stat_cat
         ) %>% 
         mutate(
           names = Data.Frame.Name, 
@@ -296,7 +297,7 @@ find_player_features <-
           by = "names"
         ) %>% 
         select(-names, -Data.Frame.Name, - Pretty.Name.from.FBref ) %>% 
-        select(descr, everything() ) %>% 
+        select(stat_cat, descr, everything() ) %>% 
         arrange(-percentiles_per_90) %>%
         
         head(N_FEATURES)
@@ -306,22 +307,23 @@ find_player_features <-
       print_res$percentiles <- paste0(round(print_res$percentiles, 2) * 100, "%")
       print_res$percentiles_per_90  <- paste0(round(print_res$percentiles_per_90, 2) * 100, "%")
       
-      colnames(print_res) <- c("Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile")
+      colnames(print_res) <- c("Stat. Category", "Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile")
       return(
         datatable(print_res,rownames=FALSE, 
                   options = list(iDisplayLength = N_FEATURES), 
                   caption = "Best Metrics for Selected Player by Percentile Per 90 Minutes") %>% 
-          formatRound(columns = c(2,4), 
+          formatRound(columns = c(3,5), 
                       digits = 2)
         )
     }
     
     if(RETURN_VECTOR == "N" & BEST_OR_WORST == "WORST"){
-      data_dict_f <- 
+        data_dict_f <- 
         data_dict %>% 
         select(
           Data.Frame.Name, 
-          Pretty.Name.from.FBref
+          Pretty.Name.from.FBref, 
+          stat_cat
         ) %>% 
         mutate(
           names = Data.Frame.Name, 
@@ -337,8 +339,8 @@ find_player_features <-
           by = "names"
         ) %>% 
         select(-names, -Data.Frame.Name, - Pretty.Name.from.FBref ) %>% 
-        select(descr, everything() ) %>% 
-        arrange(percentiles_per_90) %>%
+        select(stat_cat, descr, everything() ) %>% 
+        arrange(-percentiles_per_90) %>%
         
         head(N_FEATURES)
 
@@ -347,12 +349,12 @@ find_player_features <-
       print_res$percentiles <- paste0(round(print_res$percentiles, 2) * 100, "%")
       print_res$percentiles_per_90  <- paste0(round(print_res$percentiles_per_90, 2) * 100, "%")
       
-      colnames(print_res) <- c("Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile")
+      colnames(print_res) <- c("Stat. Category", "Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile")
       return(
         datatable(print_res,rownames=FALSE, 
                   options = list(iDisplayLength = N_FEATURES), 
                   caption = "Best Metrics for Selected Player by Percentile Per 90 Minutes") %>% 
-          formatRound(columns = c(2,4), 
+          formatRound(columns = c(3,5), 
                       digits = 2)
         )
       
@@ -496,7 +498,9 @@ dynamic_table_summary <-
     f <- f[f$descr %in% COLUMNS,]
     
     f %>% 
-      select(descr, 
+      select(
+            stat_cat, 
+            descr, 
             player_stat, 
             percentiles,
             player_stat_per_90, 
@@ -507,12 +511,12 @@ dynamic_table_summary <-
     f$percentiles <- paste0(round(f$percentiles, 2) * 100, "%")
     f$percentiles_per_90  <- paste0(round(f$percentiles_per_90, 2) * 100, "%")
     
-    colnames(f) <- c("Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile")
+    colnames(f) <- c("Stat. Category","Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile")
     datatable(f, rownames=FALSE,
               options = list(autoWidth = TRUE,
-                             columnDefs = list(list(width = '10px', targets = list(2,3,4))))) %>% 
+                             columnDefs = list(list(width = '10px', targets = list(3,4,5))))) %>% 
       
-      formatRound(columns = c(2,4), 
+      formatRound(columns = c(3,5), 
                       digits = 2)
     
   }
@@ -1316,8 +1320,83 @@ body <-
                               ))), 
     tabItems(
       tabItem(tabName = "intro", 
-              "Hello", 
-              verbatimTextOutput('test')
+              HTML(
+                "
+                <p style='font-size: 24px; font-weight: bold;'>Welcome! </p>
+                <br> 
+                <ul>
+                
+                <li> The dahsboards provides a summary and some analytics of soccer player performance based on 
+                over 80 variables, for 12 leagues, for data going back to the 2018, or 2017/2018 seasons! </li> 
+                
+                <li> The data is taken from FBref.com, a free to use soccer database and news website </li> 
+                
+                <li> FBref is a great source of data, providing both commonly used metrics, such as Expected Goals (xG) or 
+                progressive carries, but also some very detailed statistics, such as the number of times a 
+                player 'switches' the field, i.e. reverses the direction of the ball </li> 
+                
+                <li> All these stats can be used to accurately summarize players' profiles, and fild similar players 
+                in a pool of over 30,000 players. </li> 
+                </ul>
+                
+                <p style='font-size: 24px; font-weight: bold;'>Navigation: </p>
+                
+                <ul> 
+                
+                <li> <b> Helper Page </b>. This tab provides assistance to the user. Here you can find a data dictionary 
+                (which I also creted used FBref's glossary), and a player look up tab. </li> 
+                
+                <li> Player look up can, obviously, show you players, but also will shows what years, or seasons, are 
+                available for a selected competition. </li>
+                
+                <br> 
+                
+                <li> <b> Player profile </b> is a summary page for one selected player, in a selected season. </li> 
+                  <ul> 
+                    <li> Player's values are presented on both the aggregate scale (total per season), and a per 90 minutes 
+                          scale </li> 
+                    
+                      <li> Each player's 'per 90 minutes' statistics are used to find a percentile of a corresponding statistics. 
+                          Higher percentile means player is more of an expert in a given category than most players. </li> 
+                    
+                      <li> Percentiles are found using a restricted pool of players. By default, you compare a player 
+                            against other players who played at least 1,000 minutes in the top 5 European leagues. </li> 
+                  </ul> 
+                
+                
+                <br> 
+                
+                <li> <b>Player scouting </b>attmepts to find similar players to a player selected in the previous tab </li> 
+                
+                  <ul> 
+                  
+                    <li> Similar players are found using best stats from player profile tab </li> 
+                
+                    <li> Using sorted distance to the player, we limit all players to be within certain age rage and  
+                        to be featured in certain positions </li> 
+                
+                    <li> You get to see how many simialr players to display, by default, you will see 10 </li> 
+                
+                  </ul>
+                
+                </ul> 
+                
+                <p style='font-size: 24px; font-weight: bold;'>Suggested Use: </p>
+                
+                <ul> 
+                
+                <li> I highlighted a few player who are current world stars, so you can copy and paste their names in the 
+                    player profile tab to examine their statistics. </li> 
+                
+                <li> After examining player profile, move on to the similar players tab </li> 
+                
+                <li> When you find a similar player, take their name, go to the player profile tab, and start all over again </li> 
+                
+                </ul> 
+                
+                 <p style='font-size: 18px; font-weight: bold;'>Follow instructions and aqua-colored boxes for extra guidance. Have fun! </p>
+                "
+              )
               ),
       tabItem(tabName = "helper", 
               tabsetPanel(
@@ -1541,7 +1620,6 @@ body <-
                       
                       box(width = 12, background = 'aqua', 
                           HTML("
-                               
                                And if you want to hand pick categories for each player you can do so in this section! 
                                A filter below gives you in option to display a statistic in a tabke and on a bar graph. 
                                
@@ -1569,7 +1647,6 @@ body <-
                                        ),
                                      multiple=TRUE), width = 12
                       ), 
-                      box("explanation", width = 12), 
                       box(dataTableOutput('dynamic_table_summary'), width = 6, 
                           align = "left"),
                    
@@ -1583,11 +1660,11 @@ body <-
       
       tabItem(tabName = "player_scouting", 
               fluidRow(
-                box("
-                    <p style='font-size: 16px; font-weight: bold;'>
-                    Now that you saw what stats a player excells at, are you curious what other players do the same things 
+                box(
+                  HTML("<p style='font-size: 16px; font-weight: bold;'>
+                          Now that you saw what stats a player excells at, are you curious what other players do the same things 
                     just as good? Maybe you are a scount that wants to find a replacement for an aging star? 
-                    </p>
+                          </p>
                     
                     Uisng a set of best statistics, on the per 90 minutes scale, we calculate euclidian distance from each 
                     player to a player of interest. This distance is then scaled to 0-1 scale, for convinience.
@@ -1596,7 +1673,7 @@ body <-
                     but you can limit it and focus on scouting young outstanding players. 
                     
                     You can also pick positions that we scout, by default all positions for a player of interest are selected. 
-                    ", width = 12, background = 'aqua'), 
+                    "), width = 12, background = 'aqua'), 
                 
                 
                 box(sliderInput(inputId = 'similar_player_age_filter', 
