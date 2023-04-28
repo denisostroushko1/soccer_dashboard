@@ -340,7 +340,7 @@ find_player_features <-
         ) %>% 
         select(-names, -Data.Frame.Name, - Pretty.Name.from.FBref ) %>% 
         select(stat_cat, descr, everything() ) %>% 
-        arrange(-percentiles_per_90) %>%
+        arrange(percentiles_per_90) %>%
         
         head(N_FEATURES)
 
@@ -377,7 +377,9 @@ one_feature_histogram <-
     data_dict %>% filter(Pretty.Name.from.FBref == PLOT_VAR) %>% 
       select(Data.Frame.Name) %>% unlist() %>% set_names(NULL) -> plot_var_df
     
-    stats <- DATA[league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER] %>% 
+    stats <- DATA[(league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER) | 
+                    (summary_player == PLAYER & team_name == TEAM & season %in% SEASON)
+                  ] %>% 
       select(
         all_of(c(plot_var_df, 'summary_player', 'season', 'team_name', 'league_name', "summary_min" ))
       )
@@ -1335,7 +1337,7 @@ body <-
                 progressive carries, but also some very detailed statistics, such as the number of times a 
                 player 'switches' the field, i.e. reverses the direction of the ball </li> 
                 
-                <li> All these stats can be used to accurately summarize players' profiles, and fild similar players 
+                <li> All these stats can be used to accurately summarize players' profiles, and find similar players 
                 in a pool of over 30,000 players. </li> 
                 </ul>
                 
@@ -1344,9 +1346,9 @@ body <-
                 <ul> 
                 
                 <li> <b> Helper Page </b>. This tab provides assistance to the user. Here you can find a data dictionary 
-                (which I also creted used FBref's glossary), and a player look up tab. </li> 
+                (which I also created used FBref's glossary), and a player look up tab. </li> 
                 
-                <li> Player look up can, obviously, show you players, but also will shows what years, or seasons, are 
+                <li> Player look up shows you players, but also will show what years, or seasons, are 
                 available for a selected competition. </li>
                 
                 <br> 
@@ -1366,7 +1368,7 @@ body <-
                 
                 <br> 
                 
-                <li> <b>Player scouting </b>attmepts to find similar players to a player selected in the previous tab </li> 
+                <li> <b>Player scouting </b>attempts  to find similar players to a player selected in the previous tab </li> 
                 
                   <ul> 
                   
@@ -1375,7 +1377,7 @@ body <-
                     <li> Using sorted distance to the player, we limit all players to be within certain age rage and  
                         to be featured in certain positions </li> 
                 
-                    <li> You get to see how many simialr players to display, by default, you will see 10 </li> 
+                    <li> You get to see how many similar players to display, by default, you will see 10 </li> 
                 
                   </ul>
                 
@@ -1551,7 +1553,7 @@ body <-
                             
                             <br> 
                             We scale statistics to 'per 90 minutes' so that we can accurately assess how well a player 
-                            does a certain action in a constained amount of time. 90 minutes is a length of a soccer match. 
+                            does a certain action in a constained amount of time. 90 minutes is the length of a soccer match. 
                             
                             <br> All percentiles are derived using a subset of all available players. 
                             By defaul, you compare 'performance per 90 minutes' for players who played at least 1,000 minutes 
@@ -1596,7 +1598,7 @@ body <-
                                        setdiff( # remove some columns from options here 
                                          data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(), 
                                          remove_colnames_dict
-                                         )
+                                         ) %>% sort()
                          ),
                          
                          plotlyOutput('one_feature_histogram')
@@ -1660,14 +1662,21 @@ body <-
       
       tabItem(tabName = "player_scouting", 
               fluidRow(
+                HTML("
+                       <p style='font-size: 16px; font-weight: bold;color: red'>Warning: if you see errors, it is likely 
+                     that the output did not laod properly. Click on the Player Profile tab, load the page, and come back here</p> 
+                       "), 
                 box(
+                   
                   HTML("<p style='font-size: 16px; font-weight: bold;'>
                           Now that you saw what stats a player excells at, are you curious what other players do the same things 
                     just as good? Maybe you are a scount that wants to find a replacement for an aging star? 
                           </p>
                     
                     Uisng a set of best statistics, on the per 90 minutes scale, we calculate euclidian distance from each 
-                    player to a player of interest. This distance is then scaled to 0-1 scale, for convinience.
+                    player to a player of interest. <b> Player of interest has been picked on the previous tab. 
+                    League Filters also carry over from the previous tab </b>. 
+                    This distance is then scaled to 0-1 scale, for convinience.
                     
                     On this page you will see a number of similar players. By default, we include a vast range of ages, 
                     but you can limit it and focus on scouting young outstanding players. 

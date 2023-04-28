@@ -49,7 +49,7 @@ source("Master Packages.R")
     
      print("Starting deployment")
      
-    deployApp(appFiles = c("app.R", 'dash_df_rollup.fthr', "Master Packages.R", 'FBref Advanced Soccer Data Disctionary.csv'), 
+    deployApp(appFiles = c("app.R", 'dash_df_rollup.fthr', "Master Packages.R", 'FBref Advanced Soccer Data Disctionary.csv', 'boot.png'), 
               appName = 'soccer_dashboard', 
               forceUpdate = T)
     
