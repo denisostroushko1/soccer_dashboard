@@ -1767,8 +1767,8 @@ shinyApp(
     dashboardPage(
       skin = "green", 
       dashboardHeader(
-        title =  "Soccer Data", 
-        titleWidth = 300
+        title =  "FBref Powered Soccer Players Assessment", 
+        titleWidth = 450
         ),
       sidebar,
       body
