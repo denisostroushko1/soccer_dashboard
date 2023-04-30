@@ -204,7 +204,7 @@ if(length(links_in_upate) != 0){
               
         print("Looking for duplicate league names (if any)")
         nms <- 
-          roll_up %>% 
+          refreshed_data %>% 
           ungroup() %>% 
           dplyr::select(league_name) %>% 
           unique() 
