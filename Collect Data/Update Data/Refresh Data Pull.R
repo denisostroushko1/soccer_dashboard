@@ -80,8 +80,8 @@ if(length(links_in_upate) == 0){
             
   print("looking for a bug with the duplicate league names")
   older_data %>% 
-    select(league_name) %>% 
-    unique() %>% sort() %>% unlist()
+    dplyr::select(league_name) %>% 
+    unique()  %>% unlist() %>% sort() %>% set_names(NULL) %>% print() 
   
   roll_up <- roll_up_data(big_data = older_data)
   write_feather(roll_up, 'dash_df_rollup.fthr')
@@ -181,9 +181,10 @@ if(length(links_in_upate) != 0){
   unlink('dashboard_data.csv')
   
   print("looking for a bug with the duplicate league names")
+
   refreshed_data %>% 
-    select(league_name) %>% 
-    unique() %>% sort() %>% unlist()
+    dplyr::select(league_name) %>% 
+    unique()  %>% unlist() %>% sort() %>% set_names(NULL) %>% print() 
   
   print("Finishing big data - one row per game - process the data to one row per player per season")
   roll_up <- roll_up_data(big_data = refreshed_data)
