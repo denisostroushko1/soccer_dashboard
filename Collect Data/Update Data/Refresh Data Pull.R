@@ -79,7 +79,7 @@ if(length(links_in_upate) == 0){
 
             
   print("looking for a bug with the duplicate league names")
-  refreshed_data %>% 
+  older_data %>% 
     select(league_name) %>% 
     unique() %>% sort() %>% unlist()
   
