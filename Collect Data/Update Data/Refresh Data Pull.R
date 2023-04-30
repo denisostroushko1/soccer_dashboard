@@ -77,8 +77,20 @@ if(length(links_in_upate) == 0){
   
   print("Finishing big data - one row per game - process the data to one row per player per season")
 
+            
+  print("looking for a bug with the duplicate league names")
+  refreshed_data %>% 
+    select(league_name) %>% 
+    unique() %>% sort() %>% unlist()
+  
   roll_up <- roll_up_data(big_data = older_data)
   write_feather(roll_up, 'dash_df_rollup.fthr')
+  
+  print("looking for a bug with the duplicate league names in the rolled up data")
+  roll_up %>% 
+    select(league_name) %>% 
+    unique() %>% sort() %>% unlist()  
+  
   
   if(file.exists('dash_df_rollup.fthr') == T){print("created feather file")}
   }
@@ -168,16 +180,24 @@ if(length(links_in_upate) != 0){
   unlink('dashboard_data_csv_zip.zip')
   unlink('dashboard_data.csv')
   
+  print("looking for a bug with the duplicate league names")
+  refreshed_data %>% 
+    select(league_name) %>% 
+    unique() %>% sort() %>% unlist()
+  
   print("Finishing big data - one row per game - process the data to one row per player per season")
-
   roll_up <- roll_up_data(big_data = refreshed_data)
+  
+  print("looking for a bug with the duplicate league names in the rolled up data")
+  roll_up %>% 
+    select(league_name) %>% 
+    unique() %>% sort() %>% unlist()
+  
   write_feather(roll_up, 'dash_df_rollup.fthr')
   
   
 }
 
-            
-            
             
             
             

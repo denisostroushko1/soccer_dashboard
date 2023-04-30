@@ -1294,7 +1294,7 @@ server_side <-
 
 sidebar <- 
   dashboardSidebar(
-    width = 300, 
+    width = 250, 
     sidebarMenu(
       menuItem("Introduction", tabName = "intro")
       ,menuItem("Helper Page", tabName = "helper")
