@@ -1,10 +1,10 @@
-Advanced Soccer Statistics
-================
+# Advanced Soccer Statistics
 Denis Ostroushko
 
 <!-- gfm -->
 
-Last successful data update: 2023-04-30 11:13:08 CST
+Last successful data update:
+`r paste0(format(Sys.time(), tz="America/Chicago"), " CST")`
 
 # Product Link
 
@@ -13,15 +13,11 @@ here](https://kexite.shinyapps.io/soccer_dashboard/)
 
 <!--
 # Obvious Data Fixes: 
-
-1. Add match week as a variable. During the initial design I completely forgot to include it...
-
-1.1 Add opponents: currently it is unknown who the opponent on the day was... but the data is available. Will be added in version 2.0 
-
-2. Europa League and Conference League are not in the data, while UCL is... need to fix this issue, these are some of the best competitions 
+&#10;1. Add match week as a variable. During the initial design I completely forgot to include it...
+&#10;1.1 Add opponents: currently it is unknown who the opponent on the day was... but the data is available. Will be added in version 2.0 
+&#10;2. Europa League and Conference League are not in the data, while UCL is... need to fix this issue, these are some of the best competitions 
 to scout players 
-
-3. Add transfer/market values of players and their salaries 
+&#10;3. Add transfer/market values of players and their salaries 
 -->
 
 # Product Title: Advanced player-level soccer data analysis
