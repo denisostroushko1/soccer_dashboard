@@ -88,6 +88,7 @@ if(length(links_in_upate) == 0){
   
   print("looking for a bug with the duplicate league names in the rolled up data")
   roll_up %>% 
+    ungroup() %>% 
     dplyr::select(league_name) %>% 
     unique() %>% print()  
   
@@ -191,6 +192,7 @@ if(length(links_in_upate) != 0){
   
   print("looking for a bug with the duplicate league names in the rolled up data")
   roll_up %>% 
+    ungroup() %>% 
     dplyr::select(league_name) %>% 
     unique() %>% print() 
   
