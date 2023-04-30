@@ -1,53 +1,49 @@
-# Advanced Soccer Statistics
+Advanced Soccer Statistics
+================
 Denis Ostroushko
 
 <!-- gfm -->
 
-Last successfull data update:
-`r paste0(format(Sys.time(), tz="America/Chicago"), " CST")`
+Last successful data update: 2023-04-30 11:13:08 CST
 
 # Product Link
 
-[Access work-in-progress
+[Final version of PUBH 7462 project is stored
 here](https://kexite.shinyapps.io/soccer_dashboard/)
 
-# Obvious Data Fixes:
+<!--
+# Obvious Data Fixes: 
 
-1.  Add match week as a variable. During the initial design I completely
-    forgot to include it…
+1. Add match week as a variable. During the initial design I completely forgot to include it...
 
-1.1 Add opponents: currently it is unknown who the opponent on the day
-was… but the data is available. Will be added in version 2.0
+1.1 Add opponents: currently it is unknown who the opponent on the day was... but the data is available. Will be added in version 2.0 
 
-2.  Europa League and Conference League are not in the data, while UCL
-    is… need to fix this issue, these are some of the best competiitons
-    to scout players
+2. Europa League and Conference League are not in the data, while UCL is... need to fix this issue, these are some of the best competitions 
+to scout players 
 
-3.  Add transfer/market values of players and their salaries
+3. Add transfer/market values of players and their salaries 
+-->
 
 # Product Title: Advanced player-level soccer data analysis
 
-I will be working on the final project by myself. I decided to collect,
-store, and analyze some advanced soccer statistics. The final product
-will involve two major components: automatically refreshing data with
-intermediate storage in AWS, and an interactive ShinyDashboard
-application with player-level and team-level advanced statistics, in
-large provided by Opta, and available for websraping on
-[FBref.com](https://fbref.com/en/)
+I finished the final project by myself. I collected, stored, and
+analyzed advanced soccer statistics. The final product involves two
+major components: automatically refreshing data with intermediate
+storage in AWS, and an interactive Shiny Dashboard application with
+player-level advanced statistics, in large provided by Opta, and
+available for websraping on [FBref.com](https://fbref.com/en/)
 
 ## Product type description
 
-I intend to use `shiny` and `shinydashboard` to make an elegant
-dashboard with data summary tables and visualizations, some
-non-supervised learning, and time-series-esque analysis methods to
-extract insights about player types (i.e. finding players who have
-similar play styles as underlined by their detailed metrics) and their
-performances.
+I used `shiny` and `shinydashboard` to make a dashboard with data
+summary tables and visualizations and non-supervised learning to extract
+insights about player types (i.e. finding players who have similar play
+styles as underlined by their detailed metrics) and their performances.
 
 The goal of the dashboard is to allow a user to search the database of
-players from 12 selected European soccer competitions. Detailed data for
-these leagues and cups is available as early as 2017 for some leagues,
-and 2018 for all competitions.
+players from 12 selected soccer competitions. Detailed data for these
+leagues and cups is available as early as 2017 for some leagues, and
+2018 for all competitions.
 
 The data set contains just over 100 metrics that track and count various
 actions a player may do over the course of the game. The intention of
@@ -90,8 +86,11 @@ service.
 In order to store the data I set up an AWS S3 bucket. Size and amount of
 data I am working with qualifies for a free-tier storage plan.
 
-I plan to set up github automation to collect data every Tuesday, once
-the weekend games are finished.
+My repository also contains scripts and functions to automate web
+scraping of FBref. I set up a git workflow process to scrape the data
+from FBref everyday at midnight, store a copy of the data in AWS, create
+all subsequent data files in the temporary work environment, and
+redeploy the app as part of the process.
 
 # Main features and interactivity
 
@@ -116,21 +115,40 @@ this procedure:
     Say, out of 100 possible actions that we track, this action is
     ranked \#7 out of 100, i.e.  there are 6 other metrics, or
     statistics, or numbers for actions, that are in 91st, or higher
-    quartiles across all recorded players.
+    quantiles across all recorded players.
 
 2.  Use only these 10-15 features to create a K-means clustering model,
     and use the distance metric to find players that are similar to the
     one we are interested in.
 
-3.  Instead of selecting top features we can give a user an option to
-    select features by hand from a list of 100 metrics.
-
 Additionally, I want to use a number of plotly graphs and datatable
 tables to summarize player performance and their historical statistics.
 
-# Final comments
+# Future work
 
-My biggest programming challenge of scraping the data is solved. Further
-challenges will arise if the HTML structure of the website changes, and
-I need to redesign some web scraping functions. Hopefully FBref do not
-indeed to do so in the next few months.
+1.  I want to refine the data that powers my analysis. The data I used
+    for analysis and final version for PUBH 7462 is quite raw. There are
+    a lot of sparse metrics, such as red card, or own goals (which are
+    rare events). There are also statistics that tally success and fails
+    of an outcome (such a successful tackles and unsuccessful tackles),
+    which should be turned into the total tackles and success %.
+    Reducing the number of features should reduce the amount of noise in
+    the analysis.
+
+2.  I want to add more tabs into the dashboard: two-player side-by-side
+    comparison, team level-comparison, standout players.
+
+- team-level profile will attempt to compare teams in terms of
+  statistics aggregated from the player level. In the process of
+  scouting, it is not only important to find a player that is similar to
+  a player you try to replace, but also a scouted player needs to be a
+  able to fit in the system and play style that a given team has.
+
+Essentially, this will allow us to evaluate how similar a scouted player
+is to our current player, but also how well can they transition from
+their old team to a new team
+
+- Standout players would be a tab that sorts that the entire data set
+  and list best players in attacking, defensive, etc.. categories. This
+  is a tool to keep an eye on players who start to perform better and
+  better every week, and therefore have stronger stats recorded.
