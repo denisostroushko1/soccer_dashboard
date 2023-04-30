@@ -78,19 +78,40 @@ if(length(links_in_upate) == 0){
   print("Finishing big data - one row per game - process the data to one row per player per season")
 
             
-  print("looking for a bug with the duplicate league names")
-  older_data %>% 
-    dplyr::select(league_name) %>% 
-    unique() %>% print() 
+        print("Looking for duplicate league names (if any)")
+        nms <- 
+          older_data %>% 
+          dplyr::select(league_name) %>% 
+          unique() 
+        
+        nms_d <- 
+          data.frame(
+            league_name = nms
+          )
+        
+        nms_d$length = nchar(nms_d$league_name)
+        nms_d %>% arrange(league_name, length) %>% print()
   
   roll_up <- roll_up_data(big_data = older_data)
   write_feather(roll_up, 'dash_df_rollup.fthr')
   
-  print("looking for a bug with the duplicate league names in the rolled up data")
-  roll_up %>% 
-    ungroup() %>% 
-    dplyr::select(league_name) %>% 
-    unique() %>% print()  
+
+            
+        print("Looking for duplicate league names (if any)")
+        nms <- 
+          roll_up %>% 
+          ungroup() %>% 
+          dplyr::select(league_name) %>% 
+          unique() 
+        
+        nms_d <- 
+          data.frame(
+            league_name = nms
+          )
+        
+        nms_d$length = nchar(nms_d$league_name)
+        nms_d %>% arrange(league_name, length) %>% print()
+   
   
   
   if(file.exists('dash_df_rollup.fthr') == T){print("created feather file")}
@@ -180,21 +201,39 @@ if(length(links_in_upate) != 0){
   ## clean up repository once files are uploaded
   unlink('dashboard_data_csv_zip.zip')
   unlink('dashboard_data.csv')
-  
-  print("looking for a bug with the duplicate league names")
-
-  refreshed_data %>% 
-    dplyr::select(league_name) %>% 
-    unique() %>% print() 
+              
+        print("Looking for duplicate league names (if any)")
+        nms <- 
+          roll_up %>% 
+          ungroup() %>% 
+          dplyr::select(league_name) %>% 
+          unique() 
+        
+        nms_d <- 
+          data.frame(
+            league_name = nms
+          )
+        
+        nms_d$length = nchar(nms_d$league_name)
+        nms_d %>% arrange(league_name, length) %>% print()
   
   print("Finishing big data - one row per game - process the data to one row per player per season")
   roll_up <- roll_up_data(big_data = refreshed_data)
   
-  print("looking for a bug with the duplicate league names in the rolled up data")
-  roll_up %>% 
-    ungroup() %>% 
-    dplyr::select(league_name) %>% 
-    unique() %>% print() 
+        print("Looking for duplicate league names (if any)")
+        nms <- 
+          roll_up %>% 
+          ungroup() %>% 
+          dplyr::select(league_name) %>% 
+          unique() 
+        
+        nms_d <- 
+          data.frame(
+            league_name = nms
+          )
+        
+        nms_d$length = nchar(nms_d$league_name)
+        nms_d %>% arrange(league_name, length) %>% print()
   
   write_feather(roll_up, 'dash_df_rollup.fthr')
   
