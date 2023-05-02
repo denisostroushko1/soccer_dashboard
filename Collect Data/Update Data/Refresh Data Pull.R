@@ -77,7 +77,16 @@ if(length(links_in_upate) == 0){
   
   print("Finishing big data - one row per game - process the data to one row per player per season")
 
-            
+  older_data$league_name <- 
+    case_when(
+      substr(older_data$league_name,
+             nchar(older_data$league_name),
+             nchar(older_data$league_name)) == " " ~ 
+        
+        substr(older_data$league_name, 1, nchar(older_data$league_name)-1), 
+      
+      T ~ older_data$league_name
+    )
         print("Looking for duplicate league names (if any)")
         nms <- 
           older_data %>% 
@@ -187,7 +196,18 @@ if(length(links_in_upate) != 0){
   
   refreshed_data <- rbind(older_data, new_data)
   refreshed_data$season <- gsub("-", "/", refreshed_data$season)
+
   
+  refreshed_data$league_name <- 
+    case_when(
+      substr(refreshed_data$league_name,
+             nchar(refreshed_data$league_name),
+             nchar(refreshed_data$league_name)) == " " ~ 
+        
+        substr(refreshed_data$league_name, 1, nchar(refreshed_data$league_name)-1), 
+      
+      T ~ refreshed_data$league_name
+    )
   
   ########### 
   # SEND DATA TO AWS
