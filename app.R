@@ -117,7 +117,12 @@ display_players <-
 
 ## This really needs to be remade 
 player_season_summary <- 
-  function(DATA, PLAYER, SEASON, TEAM){
+  function(
+    DATA, 
+    PLAYER, 
+    SEASON, 
+    TEAM
+    ){
     
     DATA[summary_player %in% PLAYER & 
      team_name %in% TEAM & 
@@ -267,7 +272,8 @@ find_player_features <-
     REACTIVE_DATA, 
     N_FEATURES, 
     RETURN_VECTOR, 
-    BEST_OR_WORST){
+    BEST_OR_WORST
+    ){
     
     
     if(RETURN_VECTOR == "Y"){
@@ -663,46 +669,79 @@ similar_players_euclid_dist_data <-
     #       c(FEATURES_LIST)))
 
     df_per_90 <- df %>%
-      mutate(across(all_of(FEATURES_LIST), ~ . / minutes * 90))
+      mutate_at(
+        vars(all_of(c(FEATURES_LIST))), ~ . / minutes * 90)
 
+    ### save means and standard deviations of the data before scaling and centering 
+    ##    so that we can also scale and center variables of the selected player when we obtain their data later 
+    
+    
+    df_per_90 %>% 
+      select(all_of(FEATURES_LIST)) %>% 
+      summarise(
+        across(everything(), ~ mean(., na.rm = T))
+      ) %>% t() -> means 
+    
+    df_per_90 %>% 
+      select(all_of(FEATURES_LIST)) %>% 
+      summarise(
+        across(everything(), ~ sd(., na.rm = T))
+      ) %>% t()    -> sds
+    
+    df_per_90 <- 
+      df_per_90 %>% 
+      mutate_at(
+        #across(all_of(c(FEATURES_LIST)), 
+              vars(all_of(c(FEATURES_LIST))), 
+               ~(. - mean(.))/sd(.)
+               )
+      
     df_per_90 <- na.omit(df_per_90)
     # 
     # colnames(df_per_90) <- FEATURES_LIST
 
     point <- REACTIVE_DATA[REACTIVE_DATA$names %in% FEATURES_LIST, ] %>% arrange(names)
-
+    
     point <- point[match(FEATURES_LIST, point$names), ]
-    for_dist <- point$player_stat_per_90 %>% unlist()
-
-    df_per_90 <- df_per_90 %>% select(-all_of(FEATURES_LIST))
     
-    colnames(df_per_90) <- c("summary_player", "summary_min", 'team_name', 'summary_age', 'all_positions', "league_name", FEATURES_LIST)
+    point <- cbind(point, means, sds)
     
-    df_per_90_names <- df_per_90[,1:6]
-    df_per_90_calc <- df_per_90[,-c(1:6)]
-    df_per_90_calc <- na.omit(df_per_90_calc)
+    point <- 
+      point %>% 
+      mutate(
+        player_stat_per_90_scaled = 
+          (player_stat_per_90 - means)/sds
+      )
+    
+    for_dist <- point$player_stat_per_90_scaled %>% unlist()
 
      df_per_902 <-
-       df_per_90_calc %>%
-        mutate(across(everything(), ~
-                        (. - for_dist[match(cur_column(), colnames(df_per_90_calc))])^2
-                      ))
-    df_per_902 <- na.omit(df_per_902)
+       df_per_90 %>%
+        mutate(
+          across(all_of(c(FEATURES_LIST)), ~
+                        (. - for_dist[match(cur_column(), colnames(df_per_90))])^2
+                      )
+        )
+     
+     df_per_902 <- 
+       df_per_902 %>% 
+       select(-all_of(c(FEATURES_LIST)))
+     
+     colnames(df_per_902)[grep("names", colnames(df_per_902))] <- FEATURES_LIST
+     
 
     df_per_902 <-
       df_per_902 %>%
       mutate(
-        sum = rowSums(across(everything())),
+        sum = rowSums(
+          across(
+            all_of(c(FEATURES_LIST))
+            )
+          ),
         scaled_distance = sum/max(sum)
-      ) %>%
-      select(scaled_distance)
+      )  %>% arrange(scaled_distance)
 
-    f <-
-      cbind(
-        df_per_90_names, df_per_902
-      ) %>% arrange(scaled_distance)
-  
-    return(f)
+    return(df_per_902)
 
   }
 
@@ -714,30 +753,33 @@ similar_players_table <-
     AGE_FILTER2, 
     POSITIONS
   ){
-    f <- REACTIVE_DATA %>%
-      select(
-        summary_player,
-        team_name,
-        league_name,
-        summary_age,
-        summary_min,
-        all_positions,
-        scaled_distance
-      ) %>%
-      arrange(scaled_distance) %>%
-      filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2 & 
-               grepl(
-                 paste(POSITIONS, collapse = "|"), 
-                 all_positions)) %>%
+
+    f <- REACTIVE_DATA  %>% 
+    select(
+      summary_player,
+      team_name,
+      league_name,
+      summary_age,
+      summary_min,
+      all_positions,
+      scaled_distance
+    ) %>%
+    arrange(scaled_distance) %>%
+    mutate(scaled_distance = round(scaled_distance, 4)) %>% 
+    filter(summary_age >= AGE_FILTER1 & summary_age <= AGE_FILTER2 &
+             grepl(
+               paste(POSITIONS, collapse = "|"),
+               all_positions)) %>% 
       head(TARGET_SIMILAR_PLAYERS) -> out
 
-    
-    out$scaled_distance <- round(out$scaled_distance, 2)
-    
-    colnames(out) <- c("Player", "Team Name", "League Name", "Player Age", "Minutes Played", "Positions Featured", 
-                       "Distance to Target Player")
-    
-     datatable(out, rownames=FALSE)
+   colnames(out) <- c("Player", "Team Name", "League Name", "Player Age", "Minutes Played", "Positions Featured",
+                     "Distance to Target Player")
+
+     datatable(out, rownames=FALSE,
+        options = list(
+          scrollX = 200,
+          scroller = TRUE
+      )      )
       
   }
 
@@ -1705,9 +1747,11 @@ body <-
         
                 box(uiOutput('scouter_positions_filter'), width = 4),
                 
-                box(dataTableOutput('similar_players_table'), 
-                    width = 12), 
-              
+                # dataTableOutput('similar_players_table'), 
+
+                box(dataTableOutput('similar_players_table'),
+                    width = 12),
+
                 box(width = 12, 
                     background = 'aqua', 
                     HTML("
