@@ -48,7 +48,7 @@ source("Master Packages.R")
     # Deploy
     
      print("Starting deployment")
-     remove.packages("knitr")
+     # remove.packages("knitr"): removing a package this way causes a process to just terminate with no clear error code
     deployApp(appFiles = c("app.R", 'dash_df_rollup.fthr', "Master Packages.R", 'FBref Advanced Soccer Data Disctionary.csv', './www/boot.png'), 
               appName = 'soccer_dashboard', 
               forceUpdate = T)
