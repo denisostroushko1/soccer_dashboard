@@ -33,8 +33,6 @@ jobs:
               any::devtools
               any::tidyverse
               any::plotly
-              any::knitr
-              any::kableExtra
               any::rvest
               any::xml2
               any::worldfootballR
@@ -50,6 +48,8 @@ jobs:
               any::secret
               any::rsconnect
               any::stringr
+              any::knitr
+              any::kableExtra
                
       - name: Execute R Script
         env:
