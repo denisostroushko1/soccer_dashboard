@@ -48,7 +48,6 @@ jobs:
               any::secret
               any::rsconnect
               any::stringr
-              any::knitr
               any::kableExtra
                
       - name: Execute R Script
