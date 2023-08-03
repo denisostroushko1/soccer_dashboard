@@ -11,8 +11,11 @@ execute:
 ---
 
 <!-- gfm --> 
+```{r}
+update_tm <-  paste0(format(Sys.time(), tz="America/Chicago"), " CST")
+```
 
-Last successful data update: `r paste0(format(Sys.time(), tz="America/Chicago"), " CST")`
+Last successful data update: `r update_tm`
 
 # Product Link
 

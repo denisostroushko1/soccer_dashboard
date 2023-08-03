@@ -48,7 +48,7 @@ source("Master Packages.R")
     # Deploy
     
      print("Starting deployment")
-     
+     remove.packages("knitr")
     deployApp(appFiles = c("app.R", 'dash_df_rollup.fthr', "Master Packages.R", 'FBref Advanced Soccer Data Disctionary.csv', './www/boot.png'), 
               appName = 'soccer_dashboard', 
               forceUpdate = T)
