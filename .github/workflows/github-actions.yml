@@ -37,9 +37,6 @@ jobs:
               any::rvest
               any::xml2
               any::worldfootballR
-              any::googledrive
-              any::googleAuthR
-              any::tictoc
               any::aws.s3
               any::rlang
               any::data.table

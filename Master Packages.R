@@ -10,11 +10,6 @@ library(xml2)
 
 library(worldfootballR) # great package for scraping from fbref and transfermarkt 
 
-library(googledrive)
-library(googleAuthR) # for tokens and data storage in the non-interactive environment
-
-library(tictoc)
-
 library(aws.s3)
 
 library(rlang)
