@@ -1,4 +1,5 @@
 
+library(devtools)
 library(curl)
 library(tidyverse)
 library(plotly)
