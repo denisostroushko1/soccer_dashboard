@@ -27,9 +27,28 @@ jobs:
           r-version: '4.3.1' # The R version to download (if necessary) and use.
           
       - name: Install packages
-        run: |
-          R -e "install.packages(c('devtools', 'tidyverse', 'plotly', 'rvest', 'xml2', 'worldfootballR', 'aws.s3', 'rlang', 'data.table', 'shinythemes', 'shiny', 'shinydashboard', 'shinyjs', 'DT', 'feather', 'secret', 'rsconnect', 'stringr', 'kableExtra'), repos = 'https://cran.rstudio.com/')"
-          R -e "devtools::install_github('yihui/knitr')"
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+            packages:
+              any::devtools
+              any::tidyverse
+              any::plotly
+              any::rvest
+              any::xml2
+              any::worldfootballR
+              any::aws.s3
+              any::rlang
+              any::data.table
+              any::shinythemes
+              any::shiny
+              any::shinydashboard
+              any::shinyjs
+              any::DT
+              any::feather
+              any::secret
+              any::rsconnect
+              any::stringr
+              any::kableExtra
                
       - name: Execute R Script
         env:
