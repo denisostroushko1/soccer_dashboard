@@ -63,7 +63,6 @@ jobs:
             shiny_token: ${{secrets.SHINY_TOKEN}}
         run: |
             Rscript Collect\ Data/Update\ Data/Refresh\ Data\ Pull.R
-            Rscript deploy.R
           
       - name: Render document
         uses: quarto-dev/quarto-actions/render@v2
