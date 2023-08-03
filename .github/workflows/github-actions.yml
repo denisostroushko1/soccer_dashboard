@@ -49,6 +49,7 @@ jobs:
               any::rsconnect
               any::stringr
               any::kableExtra
+              knitr@1.4.2
                
       - name: Execute R Script
         env:
