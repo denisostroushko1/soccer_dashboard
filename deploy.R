@@ -2,13 +2,12 @@
 source("Master Packages.R")
 # https://nrennie.rbind.io/blog/2022-10-05-automatically-deploying-a-shiny-app-for-browsing-rstats-tweets-with-github-actions/
     # Authenticate
-    print("Starting deployment")
 
     if(file.exists('keys.R') == T){
       
       source("Master Functions.R")
       
-      print("Starting local deployemnt")
+      print("Locally getting data for deployemnt")
       ## conditions for a local deployment 
       source('keys.R')
       rsconnect::setAccountInfo(name = SHINY_ACC_NAME,
@@ -49,9 +48,20 @@ source("Master Packages.R")
     
      print("Starting deployment")
      # remove.packages("knitr"): removing a package this way causes a process to just terminate with no clear error code
-    deployApp(appFiles = c("app.R", 'dash_df_rollup.fthr', "Master Packages.R", 'FBref Advanced Soccer Data Disctionary.csv', './www/boot.png'), 
-              appName = 'soccer_dashboard', 
-              forceUpdate = T)
+    deployApp(
+      appFiles = c( 
+        # data files  for the app 
+        'dash_df_rollup.fthr', 'FBref Advanced Soccer Data Disctionary.csv', 
+        
+        # scripts and R files 
+        "Master Packages.R",  "app.R", 
+        
+        # other files 
+        './www/boot.png' 
+        ), 
+      appName = 'fb_ref_dashboard', 
+      forceUpdate = T
+      )
     
     print("App deployed")
     

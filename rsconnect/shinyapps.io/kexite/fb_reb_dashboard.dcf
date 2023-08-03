@@ -1,0 +1,13 @@
+name: fb_reb_dashboard
+title: fb_reb_dashboard
+username:
+account: kexite
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 9551850
+bundleId: 7529024
+url: https://kexite.shinyapps.io/fb_reb_dashboard/
+when: 1691094204.10297
+lastSyncTime: 1691094204.10299
+asMultiple: FALSE
+asStatic: FALSE
