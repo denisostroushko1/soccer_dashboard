@@ -47,6 +47,9 @@ source("Master Packages.R")
     # Deploy
     
      print("Starting deployment")
+     print("INSTALLING KNITR FROM GITHUB")
+     install_github("yihui/knitr@v1.4.3")
+     print("KNITR FROM GITHUB DONE")
      # remove.packages("knitr"): removing a package this way causes a process to just terminate with no clear error code
     deployApp(
       appFiles = c( 
