@@ -1,4 +1,6 @@
 
+options(repos = c(CRAN = "https://cran.rstudio.com"))
+
 library(devtools)
 library(curl)
 library(tidyverse)
