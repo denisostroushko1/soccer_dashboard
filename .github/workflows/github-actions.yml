@@ -46,7 +46,7 @@ jobs:
               any::DT
               any::feather
               any::secret
-              any::rsconnect
+              rsconnect@0.829
               any::stringr
               any::kableExtra
               knitr@1.40
