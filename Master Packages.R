@@ -1,6 +1,10 @@
 
 options(repos = c(CRAN = "https://cran.rstudio.com"))
 
+print("Added KNITR Call ")
+library(knitr)
+print("All Other Pacakges ")
+
 library(devtools)
 library(curl)
 library(tidyverse)
