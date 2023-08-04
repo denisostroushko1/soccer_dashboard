@@ -2,7 +2,9 @@
 options(repos = c(CRAN = "https://cran.rstudio.com"))
 
 print("Added KNITR Call ")
-library(knitr)
+remove.packages("knitr")
+install.packages("path/to/knitr_package.tar.gz", repos = NULL, type = "source")
+require(knitr)
 print("All Other Pacakges ")
 
 library(devtools)
