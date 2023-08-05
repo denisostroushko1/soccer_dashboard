@@ -191,6 +191,9 @@ if(length(links_in_upate) != 0){
         
         T ~ refreshed_data$league_name
       )
+    
+  refreshed_data <- 
+    refreshed_data %>% unique()
   }
         
   if(is.null(new_data)){
@@ -224,9 +227,15 @@ if(length(links_in_upate) != 0){
   write.csv(refreshed_data, "dashboard_data.csv")
   zip(zipfile = "dashboard_data_csv_zip", files = "dashboard_data.csv")
   
+  if(file.exists('keys.R') == F){
   put_object(file = "dashboard_data_csv_zip.zip", 
-                 object = "dashboard_data_csv_zip.zip",
-                 bucket = Sys.getenv("bucket_name"))
+             object = "dashboard_data_csv_zip.zip",
+             bucket = Sys.getenv("bucket_name"))
+  }else{
+     put_object(file = "dashboard_data_csv_zip.zip", 
+               object = "dashboard_data_csv_zip.zip",
+               bucket = bucket_name)
+  }
   
   ## clean up repository once files are uploaded
   unlink('dashboard_data_csv_zip.zip')
@@ -248,6 +257,7 @@ if(length(links_in_upate) != 0){
         nms_d %>% arrange(league_name, length) %>% print()
   
   print("Finishing big data - one row per game - process the data to one row per player per season")
+  
   roll_up <- roll_up_data(big_data = refreshed_data)
   
         print("Looking for duplicate league names (if any)")
