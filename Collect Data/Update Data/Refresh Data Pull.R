@@ -47,27 +47,6 @@ source("Master Functions.R")
 
 # test the function 
 links_in_upate <- pull_new_matches_urls(data_to_compare = old_links)
-
-      ## save down links we just pulled 
-      all_links <- 
-        rbind(old_links[,-1], data.frame(fb_ref_match_link = links_in_upate)) %>% 
-        unique()
-      
-      write.csv(all_links, "already_used_links.csv")
-      zip(zipfile = "already_used_links_zip", files = "already_used_links.csv")
-      
-      if(file.exists('keys.R') == F){
-        put_object(file = "already_used_links_zip.zip", 
-                   object = "already_used_links_zip.zip",
-                   bucket = Sys.getenv("bucket_name"))
-      }else{
-         put_object(file = "already_used_links_zip.zip", 
-                   object = "already_used_links_zip.zip",
-                   bucket = bucket_name)
-      }
-  
-      unlink('already_used_links.csv')
-      unlink('already_used_links_zip.zip')
       
 ##############
       # start pulling data 
@@ -209,6 +188,29 @@ if(length(links_in_upate) != 0){
       T ~ refreshed_data$league_name
     )
   
+##################
+
+  ## save down links we just pulled 
+  all_links <- 
+    rbind(old_links[,-1], data.frame(fb_ref_match_link = links_in_upate)) %>% 
+    unique()
+  
+  write.csv(all_links, "already_used_links.csv")
+  zip(zipfile = "already_used_links_zip", files = "already_used_links.csv")
+  
+  if(file.exists('keys.R') == F){
+    put_object(file = "already_used_links_zip.zip", 
+               object = "already_used_links_zip.zip",
+               bucket = Sys.getenv("bucket_name"))
+  }else{
+     put_object(file = "already_used_links_zip.zip", 
+               object = "already_used_links_zip.zip",
+               bucket = bucket_name)
+  }
+
+  unlink('already_used_links.csv')
+  unlink('already_used_links_zip.zip')
+  
   ########### 
   # SEND DATA TO AWS
   write.csv(refreshed_data, "dashboard_data.csv")
@@ -256,7 +258,6 @@ if(length(links_in_upate) != 0){
         nms_d %>% arrange(league_name, length) %>% print()
   
   write_feather(roll_up, 'dash_df_rollup.fthr')
-  
   
 }
 
