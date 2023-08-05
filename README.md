@@ -3,8 +3,7 @@ Denis Ostroushko
 
 <!-- gfm -->
 
-Last successful data update:
-`r paste0(format(Sys.time(), tz="America/Chicago"), " CST")`
+Last successful data update: 2023-08-04 19:59:02 CST
 
 # Product Link
 
