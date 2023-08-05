@@ -5,7 +5,16 @@ if(file.exists('keys.R') == T){
   Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
              "AWS_SECRET_ACCESS_KEY" = secret_key, 
              "AWS_DEFAULT_REGION" =  aws_region)
-  }
+}
+
+if(file.exists('keys.R') == F){
+        Sys.setenv("AWS_ACCESS_KEY_ID" = Sys.getenv("access_key"),
+                   "AWS_SECRET_ACCESS_KEY" = Sys.getenv("secret_key"), 
+                   "AWS_DEFAULT_REGION" =  Sys.getenv("aws_region"))
+    
+}
+
+
 source("Master Packages.R")
 source("Master Functions.R")
 
@@ -13,12 +22,6 @@ source("Master Functions.R")
 #####
 #   1) downlaod zip from AWS, both files here now! 
 
-        if(file.exists('keys.R') == F){
-                Sys.setenv("AWS_ACCESS_KEY_ID" = Sys.getenv("access_key"),
-                           "AWS_SECRET_ACCESS_KEY" = Sys.getenv("secret_key"), 
-                           "AWS_DEFAULT_REGION" =  Sys.getenv("aws_region"))
-            
-          }
 
         tempfile <- tempfile()  
         save_object(object = "s3://shiny-soccer-data/dashboard_data_csv_zip.zip", file = tempfile)
@@ -111,21 +114,21 @@ if(length(links_in_upate) != 0){
     # unfortunately, there are still errors sometimes when we set time_pause equal to 3
   ### pipe all links from the new list into a collect data function 
   
-  list_of_leagues_we_update <- 
-       c("EFL Championship",
-      "Eredivisie" ,
-      "La Liga",
-      "Liga MX",
-      "Ligue 1" ,
-      "Major League Soccer",    
-      "Premier League"   ,
-      "Primeira Liga" ,
-      "Serie A" ,
-      "UEFA Champions League", 
-     # "UEFA Europa League"    ,       
-      "Campeonato Brasileiro Série A",  
-      "Fußball-Bundesliga"
-      )
+    list_of_leagues_we_update <- 
+         c("EFL Championship",
+        "Eredivisie" ,
+        "La Liga",
+        "Liga MX",
+        "Ligue 1" ,
+        "Major League Soccer",    
+        "Premier League"   ,
+        "Primeira Liga" ,
+        "Serie A" ,
+        "UEFA Champions League", 
+       # "UEFA Europa League"    ,       
+        "Campeonato Brasileiro Série A",  
+        "Fußball-Bundesliga"
+        )
   
   ####### need to replace this such taht I do not rely on someone's repo
   
@@ -161,33 +164,38 @@ if(length(links_in_upate) != 0){
   
   
   ##### final result
-  new_data <-
-    new_data %>% 
-    left_join(
-      seasons_for_df, 
-      by = "league_name"
-    ) 
+  if(!is.null(new_data)){
+    new_data <-
+      new_data %>% 
+      left_join(
+        seasons_for_df, 
+        by = "league_name"
+      ) 
+    
+    new_data <- new_data %>% select(-season_end_year)
+    colnames_to_remove <- colnames(new_data)[grep("[1-9]", colnames(new_data))]
+    new_data <- new_data[, -c(which(colnames(new_data) %in% colnames_to_remove))]
+    # upload refreshed data now 
+    
+    refreshed_data <- rbind(older_data, new_data)
+    refreshed_data$season <- gsub("-", "/", refreshed_data$season)
   
-  new_data <- new_data %>% select(-season_end_year)
-  colnames_to_remove <- colnames(new_data)[grep("[1-9]", colnames(new_data))]
-  new_data <- new_data[, -c(which(colnames(new_data) %in% colnames_to_remove))]
-  # upload refreshed data now 
-  
-  refreshed_data <- rbind(older_data, new_data)
-  refreshed_data$season <- gsub("-", "/", refreshed_data$season)
-
-  
-  refreshed_data$league_name <- 
-    case_when(
-      substr(refreshed_data$league_name,
-             nchar(refreshed_data$league_name),
-             nchar(refreshed_data$league_name)) == " " ~ 
+    
+    refreshed_data$league_name <- 
+      case_when(
+        substr(refreshed_data$league_name,
+               nchar(refreshed_data$league_name),
+               nchar(refreshed_data$league_name)) == " " ~ 
+          
+          substr(refreshed_data$league_name, 1, nchar(refreshed_data$league_name)-1), 
         
-        substr(refreshed_data$league_name, 1, nchar(refreshed_data$league_name)-1), 
-      
-      T ~ refreshed_data$league_name
-    )
-  
+        T ~ refreshed_data$league_name
+      )
+  }
+        
+  if(is.null(new_data)){
+    refreshed_data = older_data
+  }
 ##################
 
   ## save down links we just pulled 

@@ -4,6 +4,7 @@ source('Master Packages.R')
 detail_fb_data_for_all_matches <- 
   function(matches_urls, time_pause){
     
+   incomplete_counter = 0
    res_store <- matrix(nrow = length(matches_urls) * 34 + 1 # add an extra row to just be safe 
                         , ncol = 126)
     
@@ -67,8 +68,22 @@ detail_fb_data_for_all_matches <-
         ### that times two is 32 rows. 
         ### then we have number of matches times 32 = total number of rows. 
         
-        if(find_res[[1]][1] != -1){ # this condition handles the fact when both tables are not populated for both teams. 
+        # this variable counts how many matches in the update have incomplete information 
+        if(find_res[[1]][1] == -1 | 
+           is.na(find_res[[1]][3])){
+          
+            incomplete_counter = incomplete_counter + 1
+        }
+        
+        if(find_res[[1]][1] != -1 & 
+           !is.na(find_res[[1]][3])){ # this condition handles the fact when both tables are not populated for both teams. 
                                     # this happens when we have games cancelled, such as due to COVID in 2020.
+                                    # we also handle Champions leagues and cup games where participating teams do not have 
+                                    # proper statistics recore. Often in the qualifying rounds small teams will have 
+                                    # no advanced statistics 
+          
+          # save 
+          
           team_1_table <- # this stores 6 tables in the results 
               match_page %>% rvest::html_nodes(team_1_table_id_f) %>% 
               rvest::html_nodes("div")
@@ -76,6 +91,8 @@ detail_fb_data_for_all_matches <-
           team_2_table <- # this stores 6 tables in the results 
               match_page %>% rvest::html_nodes(team_2_table_id_f) %>% 
               rvest::html_nodes("div")
+          
+          last_saved_team_2_table <- team_2_table
           
           # now we need to use these tables and store them in the results matrix
           # columns 1 to 31 - summary from element 1 
@@ -134,24 +151,35 @@ detail_fb_data_for_all_matches <-
         pb$tick()
     }
     
+    print(
+      paste0(
+        incomplete_counter, " of ", length(matches_urls), " matches had missing, incomplete, or non-standard data. ", 
+        paste0(round(incomplete_counter/length(matches_urls), 4) * 100, "%"), " of matches in the update are discarded."
+      )
+    )
+    
+    if(nrow(na.omit(res_store)) == 0){print("No new data to add to the database ")}
+    
+    if(nrow(na.omit(res_store)) != 0){
+      
      true_colnames_prefix <- c(
             paste0("summary_", 
-              colnames(get_data_matrix(team_2_table, element = 1))
+              colnames(get_data_matrix(last_saved_team_2_table, element = 1))
               ),
             paste0("passing_", 
-              colnames(get_data_matrix(team_2_table, element = 2)[,-c(1:6)])
+              colnames(get_data_matrix(last_saved_team_2_table, element = 2)[,-c(1:6)])
               ),
             paste0("pass_types_", 
-              colnames(get_data_matrix(team_2_table, element = 3)[,-c(1:6)])
+              colnames(get_data_matrix(last_saved_team_2_table, element = 3)[,-c(1:6)])
               ),
             paste0("defensive_", 
-              colnames(get_data_matrix(team_2_table, element = 4)[,-c(1:6)])
+              colnames(get_data_matrix(last_saved_team_2_table, element = 4)[,-c(1:6)])
               ),
             paste0("posession_", 
-              colnames(get_data_matrix(team_2_table, element = 5)[,-c(1:6)])
+              colnames(get_data_matrix(last_saved_team_2_table, element = 5)[,-c(1:6)])
               ), 
             paste0("misc_stat_", 
-              colnames(get_data_matrix(team_2_table, element = 6)[,-c(1:6)])
+              colnames(get_data_matrix(last_saved_team_2_table, element = 6)[,-c(1:6)])
               ),
             "Team", "Game_Date", "FB_ref_match_link", "League_name"
           )
@@ -251,6 +279,7 @@ detail_fb_data_for_all_matches <-
     #   )
     #     
     return(res_store)
+    }
   }
 
 
