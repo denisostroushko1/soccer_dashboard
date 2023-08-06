@@ -143,7 +143,7 @@ for( i in 1:nrow(step_1)){
   ### 
   for(j in 1:length(hrefs)){
  
-    
+    Sys.sleep(5)
     print(paste0(
       "Finding scores and fixtures for ", competition, ". Processing link ", j, " of ", length(hrefs)
     ))
