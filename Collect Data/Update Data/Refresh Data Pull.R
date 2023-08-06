@@ -191,10 +191,6 @@ if(length(links_in_upate) != 0){
         
         T ~ refreshed_data$league_name
       )
-    
-  print("Removing duplicated records from a large data set")
-  refreshed_data <- 
-    refreshed_data %>% unique()
   }
         
   if(is.null(new_data)){
