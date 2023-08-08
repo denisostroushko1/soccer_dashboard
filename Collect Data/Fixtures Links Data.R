@@ -69,7 +69,9 @@ link_list <- list()
     "Primeira Liga" ,
     "Serie A" ,
     "UEFA Champions League", 
-   # "UEFA Europa League"    ,       
+    "UEFA Europa League"    ,       
+    "UEFA Europa Conference League", 
+    "Copa Libertadores de América", 
     "Campeonato Brasileiro Série A",  
     "Fußball-Bundesliga"
     )
@@ -113,18 +115,21 @@ for( i in 1:nrow(step_1)){
 
   # we will 
   competition2 <- case_when(
-    competition == "UEFA Champions League" ~ 'Champions-League', 
-    competition == 'Campeonato Brasileiro Série A' ~ "Serie-A", 
-    competition == "EFL Championship" ~ "Championship", 
-    competition == "Fußball-Bundesliga" ~ "Bundesliga", 
-    competition == "La Liga" ~ "La-Liga", 
-    competition == "Liga MX" ~ "Liga-MX", 
-    competition == "Ligue 1" ~ "Ligue-1", 
-    competition == "Major League Soccer" ~ "Major-League-Soccer", 
-    competition == "Premier League" ~ "Premier-League", 
-    competition == "Primeira Liga" ~ "Primeira-Liga", 
-    competition == "Serie A" ~ "Serie-A", 
-    T ~ competition
+    competition == 'Campeonato Brasileiro Série A' ~ 'Serie-A'                 ,
+    competition == 'Copa Libertadores de América'  ~ 'Copa-Libertadores'       , 
+    competition == 'EFL Championship'              ~ 'Championship'            ,
+    competition == 'Eredivisie'                    ~ 'Eredivisie'              ,  
+    competition == 'Fußball-Bundesliga'            ~ 'Bundesliga'              ,
+    competition == 'La Liga'                       ~ 'La-Liga'                 ,  
+    competition == 'Liga MX'                       ~ 'Liga-MX'                 ,
+    competition == 'Ligue 1'                       ~ 'Ligue-1'                 , 
+    competition == 'Major League Soccer'           ~ 'Major-League-Soccer'     , 
+    competition == 'Premier League'                ~ 'Premier-League'          ,  
+    competition == 'Primeira Liga'                 ~ 'Primeira-Liga'           ,             
+    competition == 'Serie A'                       ~ 'Serie-A'                 ,
+    competition == 'UEFA Champions League'         ~ 'Champions-League'        ,
+    competition == 'UEFA Europa Conference League' ~ 'Europa-Conference-League',
+    competition == 'UEFA Europa League'            ~ 'Europa-League'
   )
   
   tables2[1] %>% html_nodes("a") %>% html_attr("href") %>% sort() -> hrefs
@@ -209,10 +214,29 @@ final_df2$true_yr <-
 # now filter out all garbage and years we are not intereseted in
 final_df2 <- final_df2 %>% filter(fixtrures_urls != "https://fbref.com")
 final_df2 <- final_df2 %>% filter(comp != "")
+
+# most current season for double year competitions has the same end year as the one before that. 
+# fix that now 
+
+final_df2$counter = 1
+
+for(i in 2:nrow(final_df2)){
+  
+  if(
+    final_df2$comp[i-1] == final_df2$comp[i] & 
+    final_df2$end_year[i-1] == final_df2$end_year[i]
+  ){
+    final_df2$counter[i] =  final_df2$counter[i] + 1
+    final_df2$end_year[i] = final_df2$end_year[i] + 1
+    final_df2$true_yr[i] = final_df2$true_yr[i] + 1
+  }
+  
+}
+
 final_df2 <- final_df2 %>% filter(end_year == true_yr)
 final_df2 <- final_df2 %>% filter(end_year >= 2017)
 
-final_df2 <- final_df2 %>% arrange(comp, end_year) %>% select(-true_yr)
+final_df2 <- final_df2 %>% arrange(comp, end_year) %>% select(-true_yr, -counter)
 
 colnames(final_df2) <- c('competition_name', 'season_end_year', 'fixtures_url', "comp_url")
 

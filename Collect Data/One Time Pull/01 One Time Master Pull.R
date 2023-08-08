@@ -18,6 +18,7 @@ source(paste0(prefix, 'Mexican Liga MX.R')) # 2023-03-23 17:07:46 to 20:19:23
 source(paste0(prefix, 'MLS.R')) # 2023-03-23 20:58:42 to 00:53:01
 source(paste0(prefix, 'Portugese Liga.R')) # 2023-03-24 01:48:33
 source(paste0(prefix, 'Spanish La Liga.R')) # 
+source(paste0(prefix, 'Copa Libertadores.R')) 
 
 data_all <- 
   rbind(
@@ -26,14 +27,16 @@ data_all <-
     ere_1_f, 
     eng_2_championship_1_f, 
     premier_league_f, 
-#    el_1_f, 
+    el_1_f, 
+    conf_1_f, 
     ligue_1_f, 
     bundes_1_f, 
     seria_ita_1_f, 
     liga_mx_1_f,
     mls_1_f, 
     potugese_1_f,
-    la_liga_f
+    la_liga_f, 
+    copa_1_f
   )
 
 data_all$league <- 
