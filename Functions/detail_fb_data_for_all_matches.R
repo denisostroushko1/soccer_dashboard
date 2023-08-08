@@ -40,6 +40,10 @@ detail_fb_data_for_all_matches <-
           match_date <- match_page %>% rvest::html_nodes(".venuetime") %>% 
             rvest::html_attr("data-venue-date")
           
+          # if match date is not available at the website then we just say the date was empty. 
+          # at this point we are not looking at specific match level data so we can use placeholders for missing dates 
+          match_date <- ifelse(length(match_date) == 0, "",  match_date)
+          
         find_res <- gregexpr('switcher_player_stats_', match_page_char) # these are positions of where the tables are within the giant HTML text 
         
         

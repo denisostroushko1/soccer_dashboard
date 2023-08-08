@@ -19,7 +19,7 @@ urls_17_18 <-
 
 urls_17_18 <- remove_promotion_relegation_playoffs(urls_17_18)
 
-el_17_18 <- detail_fb_data_for_all_matches(matches_urls = urls_17_18, time_pause = 3)
+el_17_18 <- detail_fb_data_for_all_matches(matches_urls = urls_17_18, time_pause = 5)
 
 print(paste("Finished collection of 2017/18 European Europa League data at: ", Sys.time()))
 print(paste("Total observations: ", nrow(el_17_18)))
@@ -38,7 +38,7 @@ urls_18_19 <-
 
 urls_18_19 <- remove_promotion_relegation_playoffs(urls_18_19)
 
-el_18_19 <- detail_fb_data_for_all_matches(matches_urls = urls_18_19, time_pause = 3)
+el_18_19 <- detail_fb_data_for_all_matches(matches_urls = urls_18_19, time_pause = 5)
 
 print(paste("Finished collection of 2018/19 European Europa League data at: ", Sys.time()))
 print(paste("Total observations: ", nrow(el_18_19)))
@@ -57,7 +57,7 @@ urls_19_20 <-
 
 urls_19_20 <- remove_promotion_relegation_playoffs(urls_19_20)
 
-el_19_20 <- detail_fb_data_for_all_matches(matches_urls = urls_19_20, time_pause = 3)
+el_19_20 <- detail_fb_data_for_all_matches(matches_urls = urls_19_20, time_pause = 5)
 
 print(paste("Finished collection of 2019/20 European Europa League data at: ", Sys.time()))
 print(paste("Total observations: ", nrow(el_19_20)))
@@ -76,7 +76,7 @@ urls_20_21 <-
 
 urls_20_21 <- remove_promotion_relegation_playoffs(urls_20_21)
 
-el_20_21 <- detail_fb_data_for_all_matches(matches_urls = urls_20_21, time_pause = 3)
+el_20_21 <- detail_fb_data_for_all_matches(matches_urls = urls_20_21, time_pause = 5)
 
 print(paste("Finished collection of 2020/21 European Europa League data at: ", Sys.time()))
 print(paste("Total observations: ", nrow(el_20_21)))
@@ -95,7 +95,7 @@ urls_21_22 <-
 
 urls_21_22 <- remove_promotion_relegation_playoffs(urls_21_22)
 
-el_21_22 <- detail_fb_data_for_all_matches(matches_urls = urls_21_22, time_pause = 3)
+el_21_22 <- detail_fb_data_for_all_matches(matches_urls = urls_21_22, time_pause = 5)
 
 print(paste("Finished collection of 2021/22 European Europa League data at: ", Sys.time()))
 print(paste("Total observations: ", nrow(el_21_22)))
@@ -114,7 +114,7 @@ urls_22_23 <-
 
 urls_22_23 <- remove_promotion_relegation_playoffs(urls_22_23)
 
-el_22_23 <- detail_fb_data_for_all_matches(matches_urls = urls_22_23, time_pause = 3)
+el_22_23 <- detail_fb_data_for_all_matches(matches_urls = urls_22_23, time_pause = 5)
 
 print(paste("Finished collection of 2022/23 European Europa League data at: ", Sys.time()))
 print(paste("Total observations: ", nrow(el_22_23)))
