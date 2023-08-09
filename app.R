@@ -1368,6 +1368,7 @@ body <-
     tabItems(
       tabItem(tabName = "intro", 
               HTML(
+                "Last Update: ", paste0(format(Sys.time(), tz="America/Chicago"), " CST"), 
                 "
                 <p style='font-size: 24px; font-weight: bold;'>Welcome! </p>
                 <br> 
