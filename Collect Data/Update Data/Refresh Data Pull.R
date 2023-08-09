@@ -115,21 +115,22 @@ if(length(links_in_upate) != 0){
   ### pipe all links from the new list into a collect data function 
   
     list_of_leagues_we_update <- 
-         c("EFL Championship",
-        "Eredivisie" ,
-        "La Liga",
-        "Liga MX",
-        "Ligue 1" ,
-        "Major League Soccer",    
-        "Premier League"   ,
-        "Primeira Liga" ,
-        "Serie A" ,
-        "UEFA Champions League", 
-        "UEFA Europa League"    ,   
-        # "Conference Leafue", 
-       # "Copa Libertaores" , 
-        "Campeonato Brasileiro Série A",  
-        "Fußball-Bundesliga"
+         c(
+          "EFL Championship",
+          "Eredivisie",
+          "La Liga",
+          "Liga MX",
+          "Ligue 1",
+          "Major League Soccer",    
+          "Premier League",
+          "Primeira Liga" ,
+          "Serie A" ,
+          "UEFA Champions League", 
+          "UEFA Europa League", 
+          "UEFA Europa Conference League",
+          "Copa Libertadores de América",   
+          "Campeonato Brasileiro Série A",  
+          "Fußball-Bundesliga"
         )
   
   ####### need to replace this such taht I do not rely on someone's repo
@@ -201,6 +202,7 @@ if(length(links_in_upate) != 0){
 ##################
 
   ## save down links we just pulled 
+  #           all_links <- refreshed_data %>% select(fb_ref_match_link) %>% unique()
   all_links <- 
     rbind(old_links[,-1], data.frame(fb_ref_match_link = links_in_upate)) %>% 
     unique()

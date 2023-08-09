@@ -15,17 +15,20 @@ pull_new_matches_urls <- function(data_to_compare){
   unlink('fixtures_zip.zip')
 
   check <- 
-    c("EFL Championship ",
-    "Eredivisie " ,
+    c(
+    "EFL Championship ",
+    "Eredivisie ",
     "La Liga ",
     "Liga MX ",
-    "Ligue 1 " ,
+    "Ligue 1 ",
     "Major League Soccer ",    
-    "Premier League "   ,
+    "Premier League ",
     "Primeira Liga " ,
     "Serie A " ,
     "UEFA Champions League ", 
-    "UEFA Europa League "    ,       
+    "UEFA Europa League ", 
+    "UEFA Europa Conference League ",
+    "Copa Libertadores de América ",   
     "Campeonato Brasileiro Série A ",  
     "Fußball-Bundesliga "
     )
@@ -43,7 +46,8 @@ pull_new_matches_urls <- function(data_to_compare){
     check == "Serie A " ~ "Serie A" ,
     check == "UEFA Champions League " ~ "UEFA Champions League", 
     check == "UEFA Europa League " ~ "UEFA Europa League", 
-   # "UEFA Europa League"    ,       
+    check == "UEFA Europa Conference League " ~ "UEFA Europa Conference League",
+    check == "Copa Libertadores de América " ~ "Copa Libertadores de América",   
     check == "Campeonato Brasileiro Série A " ~ "Campeonato Brasileiro Série A",  
     check == "Fußball-Bundesliga " ~ "Fußball-Bundesliga"
     )
