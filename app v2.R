@@ -13,7 +13,6 @@ top_5_leagues <-
 dash_df <- read_feather('dash_df_rollup.fthr')
 
 dash_df <- data.table(dash_df) 
-dash_df <- dash_df[league_name != "UEFA Champions League"]
 
 dash_df <- na.omit(dash_df)
 dash_df <- data.table(dash_df) 
