@@ -253,6 +253,16 @@ final_df2$country = ""
 final_df2$gender = "M" 
 final_df2$tier = ""
 
+Fix_links_n <- nchar("https://fbref.com//")
+
+final_df2$comp_url <- 
+  with(final_df2, 
+       case_when(
+         substr(comp_url, 1, Fix_links_n) == "https://fbref.com//" ~ 
+           paste0("https://fbref.com/", substr(comp_url, Fix_links_n+1, 300)), 
+         T ~ comp_url
+       ))
+
   write.csv(final_df2, "seasons_and_fixtures.csv")
   ### Step 2: zip file
   zip(zipfile = "fixtures_zip.zip", files = "seasons_and_fixtures.csv")

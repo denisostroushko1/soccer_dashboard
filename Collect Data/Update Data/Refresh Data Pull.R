@@ -125,7 +125,9 @@ if(length(links_in_upate) != 0){
         "Primeira Liga" ,
         "Serie A" ,
         "UEFA Champions League", 
-       # "UEFA Europa League"    ,       
+        "UEFA Europa League"    ,   
+        # "Conference Leafue", 
+       # "Copa Libertaores" , 
         "Campeonato Brasileiro Série A",  
         "Fußball-Bundesliga"
         )

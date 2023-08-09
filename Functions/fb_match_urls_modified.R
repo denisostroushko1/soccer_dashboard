@@ -17,7 +17,7 @@ fb_match_urls_modified <-
         tier %in% comp_tier, !is.na(fixtures_url)) %>% dplyr::arrange(season_end_year) %>% 
         dplyr::pull(fixtures_url) %>% unique()
     }
-    else {
+    else{
       fixtures_url <- seasons_df %>% dplyr::filter(.data[["comp_url"]] %in% 
         cups_url, gender %in% gender_M_F, season_end_year %in% 
         season_end_year_num, !is.na(fixtures_url)) %>% dplyr::arrange(season_end_year) %>% 

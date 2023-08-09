@@ -1,18 +1,18 @@
 
 pull_new_matches_urls <- function(data_to_compare){
   final <- c() # Learned in the R Efficiency data camp course that this is a horrible practive. Need to pre-allocate the vector and re-populate it.
-    
-        file_name <- "fixtures_zip.zip" # Replace with the file name of the zipped CSV file
-        
-        tempfile <- tempfile()  
-        save_object(object = "s3://shiny-soccer-data/fixtures_zip.zip", file = tempfile)
-        zipped <- unzip(tempfile)
-       
-        seasons <- read_csv("seasons_and_fixtures.csv")
-        seasons <- seasons[,-1]
-        
-        unlink('seasons_and_fixtures.csv')
-        unlink('fixtures_zip.zip')
+  
+  file_name <- "fixtures_zip.zip" # Replace with the file name of the zipped CSV file
+  
+  tempfile <- tempfile()  
+  save_object(object = "s3://shiny-soccer-data/fixtures_zip.zip", file = tempfile)
+  zipped <- unzip(tempfile)
+  
+  seasons <- read_csv("seasons_and_fixtures.csv")
+  seasons <- seasons[,-1]
+  
+  unlink('seasons_and_fixtures.csv')
+  unlink('fixtures_zip.zip')
 
   check <- 
     c("EFL Championship ",
@@ -25,7 +25,7 @@ pull_new_matches_urls <- function(data_to_compare){
     "Primeira Liga " ,
     "Serie A " ,
     "UEFA Champions League ", 
-   # "UEFA Europa League"    ,       
+    "UEFA Europa League "    ,       
     "Campeonato Brasileiro Série A ",  
     "Fußball-Bundesliga "
     )
@@ -42,6 +42,7 @@ pull_new_matches_urls <- function(data_to_compare){
     check == "Primeira Liga " ~ "Primeira Liga" ,
     check == "Serie A " ~ "Serie A" ,
     check == "UEFA Champions League " ~ "UEFA Champions League", 
+    check == "UEFA Europa League " ~ "UEFA Europa League", 
    # "UEFA Europa League"    ,       
     check == "Campeonato Brasileiro Série A " ~ "Campeonato Brasileiro Série A",  
     check == "Fußball-Bundesliga " ~ "Fußball-Bundesliga"
