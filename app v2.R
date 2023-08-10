@@ -220,12 +220,42 @@ player_profile_reactive_df <-
       
       players <- RAW_DATA %>% filter(league_name %in% COMP_LEAGUES) %>% select(summary_player) %>% unique() %>% unlist()
       
-      player_leagues <- RAW_DATA %>% 
-        filter(season %in% COMP_SEASONS &
-                 !(league_name %in% c("UEFA Champions League", 
-                                      "UEFA Europa Conference League", 
-                                      "UEFA Europa League"))) %>% 
-        select(summary_player, season, team_name, league_name) %>% unique()
+      player_leagues <- 
+        RAW_DATA %>% 
+          filter(season %in% COMP_SEASONS) %>% 
+          select(summary_player, season, team_name, league_name) %>% unique() 
+      
+      home_leagues <- 
+        RAW_DATA %>% 
+          filter(season %in% COMP_SEASONS & 
+                   !(league_name %in% c(
+                     "UEFA Champions League", 
+                     "Copa Libertadores de América", 
+                     "UEFA Europa Conference League", 
+                     "UEFA Europa League"
+                   )
+                     )) %>% 
+          select(summary_player, season, team_name, league_name) %>% rename(home_league = league_name) %>% unique() 
+      
+      player_leagues <- 
+        player_leagues %>% 
+        left_join(
+          home_leagues, 
+          by = c('summary_player' , 'season'   , 'team_name')
+        )
+      
+      player_leagues <- player_leagues %>% 
+        mutate(
+          league_name = case_when(
+            !is.na(home_league) &  league_name %in% c(
+                     "UEFA Champions League", 
+                     "Copa Libertadores de América", 
+                     "UEFA Europa Conference League", 
+                     "UEFA Europa League"
+                   ) ~ home_league, 
+            T ~ league_name
+          )
+        ) %>% select(-home_league) %>% unique()
       
       # get a row of data for the player we want to summarize and compare with others 
       RAW_DATA %>% 
@@ -295,7 +325,7 @@ player_profile_reactive_df <-
         ) %>% 
         select(summary_player,	season,	team_name, league_name, everything())  -> comp_df
         
-      target_df <- rbind(target_df, comp_df) %>% filter(summary_player == "Gabriel Barbosa")
+      target_df <- rbind(target_df, comp_df) 
     }
     
     return(target_df)
@@ -462,7 +492,7 @@ server_side <-
             )
         )
       
-      output$reactive_player_summary_df <- renderTable(reactive_player_summary_df())
+      output$reactive_player_summary_df <- renderDataTable(reactive_player_summary_df() %>% datatable())
   }
 
                                             ########################
@@ -745,7 +775,7 @@ body <-
                          )),
                 
                 tabPanel(title = "Player Profile", 
-                         tableOutput('reactive_player_summary_df')
+                         dataTableOutput('reactive_player_summary_df')
                          ),
                 
                 tabPanel(title = "Similar Players")
