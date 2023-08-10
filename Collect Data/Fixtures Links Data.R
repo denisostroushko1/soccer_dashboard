@@ -243,7 +243,7 @@ colnames(final_df2) <- c('competition_name', 'season_end_year', 'fixtures_url', 
 final_df2$season <- 
   with(final_df2, 
        case_when(
-         competition_name %in% c("Major League Soccer", "Campeonato Brasileiro Série A" ) ~ as.character(season_end_year), 
+         competition_name %in% c("Major League Soccer", "Campeonato Brasileiro Série A", "Copa Libertadores de América" ) ~ as.character(season_end_year), 
          TRUE ~ paste0(season_end_year - 1, "-", season_end_year)
        )
        )
@@ -262,6 +262,7 @@ final_df2$comp_url <-
            paste0("https://fbref.com/", substr(comp_url, Fix_links_n+1, 300)), 
          T ~ comp_url
        ))
+
 
   write.csv(final_df2, "seasons_and_fixtures.csv")
   ### Step 2: zip file

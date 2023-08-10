@@ -1,5 +1,7 @@
-
-
+                                            #####################################
+                                            # LOAD DATA, PACKAGES, OTHER SET UP #
+                                            #####################################
+                                            
 source("Master Packages.R")
 
 top_5_leagues <- 
@@ -45,16 +47,21 @@ names(positions_short_names) <- NULL
 
 # remove these columns for all per 90 calculations 
 
+remove_colnames_keep_games_mins <- c('season', 'summary_player', 'team_name', 'league_name', 'all_positions', 
+                     'summary_age', 'dominant_position')
+
 remove_colnames <- c('season', 'summary_player', 'team_name', 'league_name', 'games_played', 'summary_min', 'all_positions', 
                      'summary_age', 'dominant_position')
 
 remove_colnames_dict <- data_dict %>% filter(Data.Frame.Name %in% remove_colnames) %>% select(Pretty.Name.from.FBref) %>% 
   unlist()
 
-standard_box_style = "overflow-y: scroll;overflow-x: scroll;"
-########################################################################################################################
-########################################################################################################################
+standard_box_style = "overflow-y: scroll;overflow-x: scroll;"                         
 
+                                            ##########################################
+                                            # FUNCTION TO BE USED ON THE SERVER SIDE #
+                                            ##########################################
+                                            
 
 display_players <- 
   function(
@@ -111,8 +118,195 @@ display_players <-
             unique() %>% 
             datatable()
   }
-########################################################################################################################
-########################################################################################################################
+
+player_profile_reactive_df <- 
+  function(
+    RAW_DATA = dash_df, 
+    AGGREGATE_FLAG = NA,
+    TARGET_PLAYER = NA, 
+    TARGET_PLAYER_SEASON = NA, 
+    TARGET_PLAYER_TEAM = NA, 
+    TARGET_PLAYER_LEAGUE = NA, 
+    COMP_LEAGUES = NA, 
+    COMP_SEASONS = NA, 
+    COMP_POSITIONS = NA, 
+    COMP_AGE_START = NA, 
+    COMP_AGE_END = NA, 
+    COMP_MINUTES_START = NA, 
+    COMP_MINUTES_END = NA
+  ){
+   
+    if(AGGREGATE_FLAG == "No"){
+      
+      # get a row of data for the player we want to summarize and compare with others 
+      RAW_DATA %>% 
+        filter(
+          summary_player %in% TARGET_PLAYER, 
+          season %in% TARGET_PLAYER_SEASON, 
+          team_name %in% TARGET_PLAYER_TEAM, 
+          league_name %in% TARGET_PLAYER_LEAGUE
+        ) %>% 
+        select(-all_of(remove_colnames_keep_games_mins)) -> target_df
+      
+      target_df <- 
+        cbind(
+          
+          RAW_DATA %>% 
+            filter(
+              summary_player %in% TARGET_PLAYER, 
+              season %in% TARGET_PLAYER_SEASON, 
+              team_name %in% TARGET_PLAYER_TEAM, 
+              league_name %in% TARGET_PLAYER_LEAGUE
+            ) %>% 
+            select(summary_player, league_name, team_name, season, summary_age) , 
+          target_df
+        )
+      
+      # get data for the pool of players we compare a target player with 
+      RAW_DATA %>% 
+        filter(
+          season %in% COMP_SEASONS &
+          league_name %in% COMP_LEAGUES &
+          grepl(
+               paste(COMP_POSITIONS, collapse = "|"),
+               all_positions) &
+          summary_age >= COMP_AGE_START  &
+          summary_age <= COMP_AGE_END &
+          
+          summary_min >= COMP_MINUTES_START &
+          summary_min <= COMP_MINUTES_END &
+          
+          !(
+            summary_player %in% TARGET_PLAYER &
+            season %in% TARGET_PLAYER_SEASON &
+            team_name %in% TARGET_PLAYER_TEAM &
+            league_name %in% TARGET_PLAYER_LEAGUE
+          )
+        ) %>% 
+        select(-all_of(remove_colnames_keep_games_mins)) -> comp_df
+      
+        comp_df <- 
+          cbind(
+            
+            RAW_DATA %>% 
+              filter(
+                season %in% COMP_SEASONS &
+                league_name %in% COMP_LEAGUES &
+                grepl(
+                     paste(COMP_POSITIONS, collapse = "|"),
+                     all_positions) &
+                summary_age >= COMP_AGE_START  &
+                summary_age <= COMP_AGE_END &
+                
+                summary_min >= COMP_MINUTES_START &
+                summary_min <= COMP_MINUTES_END &
+                
+                !(
+                  summary_player %in% TARGET_PLAYER &
+                  season %in% TARGET_PLAYER_SEASON &
+                  team_name %in% TARGET_PLAYER_TEAM &
+                  league_name %in% TARGET_PLAYER_LEAGUE
+                )
+              ) %>% 
+              select(summary_player, league_name, team_name, season, summary_age) , 
+            comp_df
+          )
+        
+        target_df <- 
+          rbind(target_df, 
+                comp_df)
+    }else{
+      
+      
+      players <- RAW_DATA %>% filter(league_name %in% COMP_LEAGUES) %>% select(summary_player) %>% unique() %>% unlist()
+      
+      player_leagues <- RAW_DATA %>% 
+        filter(season %in% COMP_SEASONS &
+                 !(league_name %in% c("UEFA Champions League", 
+                                      "UEFA Europa Conference League", 
+                                      "UEFA Europa League"))) %>% 
+        select(summary_player, season, team_name, league_name) %>% unique()
+      
+      # get a row of data for the player we want to summarize and compare with others 
+      RAW_DATA %>% 
+        filter(
+          summary_player %in% TARGET_PLAYER, 
+          season %in% TARGET_PLAYER_SEASON, 
+          team_name %in% TARGET_PLAYER_TEAM
+        )  %>% 
+        select(-all_of(remove_colnames_keep_games_mins)) %>% 
+        colSums() %>% 
+        t() %>% 
+        data.frame()  -> target_df
+      
+      target_df <- 
+        cbind(
+          
+          RAW_DATA %>% 
+            filter(
+              summary_player %in% TARGET_PLAYER, 
+              season %in% TARGET_PLAYER_SEASON, 
+              team_name %in% TARGET_PLAYER_TEAM
+            ) %>% 
+            select(summary_player, team_name, season) %>% 
+            unique(), 
+          target_df
+        )%>% 
+        
+        left_join(
+          player_leagues,
+          by = c("summary_player", "team_name", "season")
+        ) %>% select(summary_player,	season,	team_name, league_name, everything())
+      
+      # other players data in the comparison pool 
+      
+      RAW_DATA %>% 
+        filter(
+          season %in% COMP_SEASONS &
+          summary_player %in% players &
+          grepl(
+               paste(COMP_POSITIONS, collapse = "|"),
+               all_positions) &
+          summary_age >= COMP_AGE_START  &
+          summary_age <= COMP_AGE_END &
+          
+          summary_min >= COMP_MINUTES_START &
+          summary_min <= COMP_MINUTES_END &
+          
+          !(
+            summary_player %in% TARGET_PLAYER &
+            season %in% TARGET_PLAYER_SEASON &
+            team_name %in% TARGET_PLAYER_TEAM
+          )
+        ) %>% 
+        select(-all_of(
+           c("league_name","all_positions","summary_age","dominant_position")
+        )) %>%
+        group_by(
+          summary_player, season, team_name
+        ) %>% 
+          # remove non-numeric columns form aggregation 
+        summarise(across(everything(), sum, na.rm =T)) %>% 
+        data.frame() %>% 
+        
+        left_join(
+          player_leagues,
+          by = c("summary_player", "team_name", "season")
+        ) %>% 
+        select(summary_player,	season,	team_name, league_name, everything())  -> comp_df
+        
+      target_df <- rbind(target_df, comp_df) %>% filter(summary_player == "Gabriel Barbosa")
+    }
+    
+    return(target_df)
+    
+  }
+
+                                            ########################
+                                            # LOAD UP SERVER SIDE #
+                                            ########################
+                                            
+
 
 
 server_side <- 
@@ -169,13 +363,20 @@ server_side <-
     
         # display available competitions, seasons, teams for a selected player name 
     output$tab <- 
-      renderTable({
+      renderDataTable({
         dash_df[dash_df$summary_player == selected_player_profile_name() ] %>% 
-          select(summary_player, summary_age, season, league_name, team_name, games_played) %>% 
-          arrange(summary_player, desc(season), league_name, team_name, games_played) %>% 
+          select(summary_age, season, league_name, team_name, all_positions) %>% 
+          arrange(desc(season), league_name, team_name, all_positions) %>% 
           mutate(summary_age = as.integer(summary_age)) %>% 
-          setNames(c("Name", "Age", "Season", "Competition", "Team", "Games Played"))
-      })
+          setNames(c("Age", "Season", "Competition", "Team", "Positions")) %>% 
+          datatable(options = list(iDisplayLength = 5,
+                                   scrollX = TRUE,
+                                   scrollY = TRUE
+                                   ), 
+                    rownames = F)
+      }, 
+      striped = TRUE, 
+      hover = TRUE)
         # dynamic picker for a player summary team 
         
         ## sometimes we have two + players with the same name playing on different teams. If we type in such a name, we need to be able to 
@@ -204,8 +405,8 @@ server_side <-
       output$same_name_leagues_picker <- 
             renderUI({
               
-              selectInput(inputId = 'select_team_same_name', 
-                           label = "Pick a team. Likely only 1 available", 
+              selectInput(inputId = 'select_league', 
+                           label = "Select Competiton", 
                            choices = same_name_leagues(), 
                            selected = same_name_leagues()[length(same_name_leagues())])
           })
@@ -225,6 +426,8 @@ server_side <-
                            selected = player_seasons()[length(player_seasons())])
           })
       
+      # make sure that we have observer event for the "Update Report" button 
+
       output$scouter_positions_filter <- 
         renderUI(
           selectInput(inputId = 'scouter_positions', 
@@ -238,10 +441,33 @@ server_side <-
                       multiple = T
                         )
         )
-         
+      
+      ########## PLAYER PROFILE SUMMARY PAGE 
+      reactive_player_summary_df <- 
+        reactive(
+          player_profile_reactive_df(
+              RAW_DATA = dash_df, 
+              AGGREGATE_FLAG = input$league_cup_combine,
+              TARGET_PLAYER = input$player_typed_name, 
+              TARGET_PLAYER_SEASON = input$select_season, 
+              TARGET_PLAYER_TEAM = input$select_team_same_name , 
+              TARGET_PLAYER_LEAGUE = input$select_league, 
+              COMP_LEAGUES = input$comp_leagues, 
+              COMP_SEASONS = input$comp_seasons, 
+              COMP_POSITIONS = input$scouter_positions, 
+              COMP_AGE_START = input$similar_player_age_filter[1], 
+              COMP_AGE_END = input$similar_player_age_filter[2], 
+              COMP_MINUTES_START = input$minutes_to_limit[1], 
+              COMP_MINUTES_END = input$minutes_to_limit[2]
+            )
+        )
+      
+      output$reactive_player_summary_df <- renderTable(reactive_player_summary_df())
   }
-########################################################################################################################
-########################################################################################################################
+
+                                            ########################
+                                            #   LOAD UP UI SIDE    #
+                                            ########################
 
 sidebar <- 
   dashboardSidebar(
@@ -454,7 +680,8 @@ body <-
                                     radioButtons(inputId = "league_cup_combine", 
                                                  label = "Combine League and Cups?", 
                                                  choices = c("Yes", "No"), 
-                                                 selected = "Yes"), 
+                                                 selected = "No"), 
+                                
                                 bsTooltip(id = "league_cup_combine", 
                                           title = "Aggreagtes season-wise data over leagues and cups. Applies to a player of choice and comparison pool.",
                                           trigger = "hover", 
@@ -462,7 +689,7 @@ body <-
                                   ),
                            
                            column(width = 6, 
-                                  tableOutput('tab'))
+                                  dataTableOutput('tab'))
                           )
                          ), 
                          fluidRow(
@@ -487,8 +714,8 @@ body <-
                                      selected = c("Major League Soccer", top_5_leagues), 
                                      multiple = T), 
                                  
-                                 selectInput(inputId = 'select_season', 
-                                               label = "Select a Season", 
+                                 selectInput(inputId = 'comp_seasons', 
+                                               label = "Select Seasons", 
                                                choices = sort(unique(dash_df$season)), 
                                                selected = c('2022/2023',
                                                             '2023'), 
@@ -512,12 +739,13 @@ body <-
                                       label = "Limit Players by Minutes Played:", 
                                       min = 0, 
                                       max = max(dash_df$summary_min), 
-                                      value = c(350, 1000))
+                                      value = c(350, 4000))
                                )
                                )
                          )),
                 
-                tabPanel(title = "Player Profile"
+                tabPanel(title = "Player Profile", 
+                         tableOutput('reactive_player_summary_df')
                          ),
                 
                 tabPanel(title = "Similar Players")
