@@ -56,6 +56,65 @@ standard_box_style = "overflow-y: scroll;overflow-x: scroll;"
 ########################################################################################################################
 
 
+display_players <- 
+  function(
+    FILTER_POS, 
+    FILTER_TEAM, 
+    FILTER_SEASON, 
+    FILTER_LEAGUE
+  ){
+    display <- 
+         
+        if(FILTER_POS %in% "All" & 
+           FILTER_TEAM %in% "All"){
+          
+              dash_df[league_name %in% FILTER_LEAGUE &
+                       season %in% FILTER_SEASON]
+          
+          }else if(
+            FILTER_POS != "All" & 
+            FILTER_TEAM %in% "All"){
+            
+              dash_df[league_name %in% FILTER_LEAGUE &
+                         season %in% FILTER_SEASON & 
+                    grepl(FILTER_POS, all_positions)]
+            
+          }else if(
+            FILTER_POS %in% "All" & 
+            FILTER_TEAM != "All"){
+            
+            dash_df[league_name %in% FILTER_LEAGUE &
+                    season %in% FILTER_SEASON & 
+                    team_name %in% FILTER_TEAM]
+          }else if(
+            FILTER_POS != "All" & 
+            FILTER_TEAM != "All"){
+            
+            dash_df[league_name %in% FILTER_LEAGUE &
+                    season %in% FILTER_SEASON & 
+                    team_name %in% FILTER_TEAM  & 
+                    grepl(FILTER_POS, all_positions)]
+          }
+    
+    display %>% dplyr::select(summary_player, summary_age, games_played, summary_min, 
+                            team_name, all_positions) %>% 
+            
+            arrange(summary_player) %>% 
+            rename(
+              `Player Name` = summary_player,
+              Age = summary_age, 
+              `Games Played` = games_played, 
+              `Minutes Played` = summary_min, 
+              `Team` = team_name, 
+              `Featured Positions (Games Appeared)` = all_positions
+            ) %>% 
+            unique() %>% 
+            datatable()
+  }
+########################################################################################################################
+########################################################################################################################
+
+
 server_side <- 
   function(input, output){
     
@@ -98,6 +157,57 @@ server_side <-
           FILTER_SEASON = input$select_season_helper
         )
       )
+    
+    #### Player Profile Stuff 
+        # type in target player name 
+    selected_player_profile_name <- 
+      eventReactive(
+        input$go, {
+          input$player_typed_name
+        }
+        )
+    
+        # display available competitions, seasons, teams for a selected player name 
+    output$tab <- 
+      renderTable({
+        dash_df[dash_df$summary_player == selected_player_profile_name() ] %>% 
+          select(summary_player, season, league_name, team_name, games_played) %>% 
+          arrange(summary_player, season, league_name, team_name, games_played)
+      })
+        # dynamic picker for a player summary team 
+        
+        ## sometimes we have two + players with the same name playing on different teams. If we type in such a name, we need to be able to 
+        ##  select a team 
+    
+      same_name_teams <- 
+        reactive(dash_df[summary_player %in% selected_player_profile_name() & 
+                         season %in% input$select_season] %>% 
+                 select(team_name) %>% unique() %>% unlist() %>% sort() %>% 
+                     set_names(NULL))
+    
+      output$same_name_team_picker <- 
+            renderUI({
+              
+              selectInput(inputId = 'select_team_same_name', 
+                           label = "Pick a team. Likely only 1 available", 
+                           choices = same_name_teams(), 
+                           selected = same_name_teams()[length(same_name_teams())])
+          })
+      
+      player_seasons <- 
+        reactive(dash_df[summary_player %in% selected_player_profile_name() ] %>% 
+                 select(season) %>% unique() %>% unlist() %>% sort() %>% 
+                     set_names(NULL))
+    
+      
+      output$picked_player_available_seasons <- 
+            renderUI({
+              
+              selectInput(inputId = 'select_season', 
+                           label = "Select a Season", 
+                           choices = player_seasons(), 
+                           selected = player_seasons()[length(player_seasons())])
+          })
          
   }
 ########################################################################################################################
@@ -251,7 +361,38 @@ body <-
                                fluidRow(box(dataTableOutput('data_dict'), width = 12)))
                     )
                     ),
-      tabItem(tabName = "player_profile"),
+      tabItem(tabName = "player_profile", 
+              tabsetPanel(
+                
+                tabPanel(title = "Parameters", 
+                         fluidRow(
+                          box(width = 12,  
+                              
+                           column(width = 3, 
+                                  actionButton(inputId = "go", 
+                                            label = "Find Teams and Seasons")),
+                           
+                           column(width = 3, 
+                                  textInput(inputId = 'player_typed_name', 
+                                   label = "Type in Player Name", 
+                                   value = 'Kevin De Bruyne'),
+                                  
+                                    uiOutput('same_name_team_picker'), 
+                                    uiOutput('picked_player_available_seasons')                                  
+                                  ),
+                           
+                           column(width = 6, 
+                                  tableOutput('tab'))
+                          )
+                         ), 
+                         fluidRow("haha")),
+                
+                tabPanel(title = "Player Profile"
+                         ),
+                
+                tabPanel(title = "Similar Players")
+                
+              )),
       tabItem(tabName = "two_player_comparison"), 
       tabItem(tabName = "team_profile")
     ))
