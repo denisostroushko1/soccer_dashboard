@@ -10,7 +10,7 @@ roll_up_data <-
       group_by(season, summary_player, team_name, league_name, summary_pos) %>% 
       summarise(
         games_played = n(),
-        summary_age = max(summary_age)
+        summary_age = min(summary_age)
       )  %>% 
       mutate(p_played = paste0(round(prop.table(games_played), 4) * 100 , "%"))  %>% 
 
@@ -23,7 +23,7 @@ roll_up_data <-
       summarise(
         all_positions = paste(unique(detailed), collapse = ", "),
         dominant_position = paste(unique(detailed2), collapse = "                  "),
-        summary_age = max(summary_age)
+        summary_age = min(summary_age)
       ) %>% 
       mutate(
         dominant_position = substr(dominant_position, 1, 10)

@@ -171,8 +171,10 @@ server_side <-
     output$tab <- 
       renderTable({
         dash_df[dash_df$summary_player == selected_player_profile_name() ] %>% 
-          select(summary_player, season, league_name, team_name, games_played) %>% 
-          arrange(summary_player, season, league_name, team_name, games_played)
+          select(summary_player, summary_age, season, league_name, team_name, games_played) %>% 
+          arrange(summary_player, desc(season), league_name, team_name, games_played) %>% 
+          mutate(summary_age = as.integer(summary_age)) %>% 
+          setNames(c("Name", "Age", "Season", "Competition", "Team", "Games Played"))
       })
         # dynamic picker for a player summary team 
         
@@ -180,8 +182,7 @@ server_side <-
         ##  select a team 
     
       same_name_teams <- 
-        reactive(dash_df[summary_player %in% selected_player_profile_name() & 
-                         season %in% input$select_season] %>% 
+        reactive(dash_df[summary_player %in% selected_player_profile_name() ] %>% 
                  select(team_name) %>% unique() %>% unlist() %>% sort() %>% 
                      set_names(NULL))
     
@@ -193,7 +194,22 @@ server_side <-
                            choices = same_name_teams(), 
                            selected = same_name_teams()[length(same_name_teams())])
           })
-      
+     
+    
+      same_name_leagues <- 
+        reactive(dash_df[summary_player %in% selected_player_profile_name() ] %>% 
+                 select(league_name) %>% unique() %>% unlist() %>% sort() %>% 
+                     set_names(NULL))
+    
+      output$same_name_leagues_picker <- 
+            renderUI({
+              
+              selectInput(inputId = 'select_team_same_name', 
+                           label = "Pick a team. Likely only 1 available", 
+                           choices = same_name_leagues(), 
+                           selected = same_name_leagues()[length(same_name_leagues())])
+          })
+       
       player_seasons <- 
         reactive(dash_df[summary_player %in% selected_player_profile_name() ] %>% 
                  select(season) %>% unique() %>% unlist() %>% sort() %>% 
@@ -208,6 +224,22 @@ server_side <-
                            choices = player_seasons(), 
                            selected = player_seasons()[length(player_seasons())])
           })
+      
+      output$scouter_positions_filter <- 
+        renderUI(
+          selectInput(inputId = 'scouter_positions', 
+                       label = 'Position', 
+                       choices = positions_short_names, 
+                       selected = 
+                        strsplit(
+                              gsub("[0-9()]", "", 
+                                   dash_df[summary_player == selected_player_profile_name() & 
+                                             season %in% player_seasons()[length(player_seasons())] & 
+                                             team_name %in% same_name_teams()[length(same_name_teams())] ]$all_positions %>% unlist()), 
+                              ", ")[[1]], 
+                      multiple = T
+                        )
+        )
          
   }
 ########################################################################################################################
@@ -370,7 +402,8 @@ body <-
                               
                            column(width = 3, 
                                   actionButton(inputId = "go", 
-                                            label = "Find Teams and Seasons")),
+                                            label = "Find Teams and Seasons", 
+                                            width = "200px")),
                            
                            column(width = 3, 
                                   textInput(inputId = 'player_typed_name', 
@@ -378,14 +411,64 @@ body <-
                                    value = 'Kevin De Bruyne'),
                                   
                                     uiOutput('same_name_team_picker'), 
-                                    uiOutput('picked_player_available_seasons')                                  
+                                    uiOutput('same_name_leagues_picker'), 
+                                    uiOutput('picked_player_available_seasons'), 
+                                    radioButtons(inputId = "league_cup_combine", 
+                                                 label = "Combine League and Cups?", 
+                                                 choices = c("Yes", "No"), 
+                                                 selected = "Yes")
                                   ),
                            
                            column(width = 6, 
                                   tableOutput('tab'))
                           )
                          ), 
-                         fluidRow("haha")),
+                         fluidRow(
+                           box(width = 12, 
+                               
+                               column(width = 3, 
+                                      actionButton(inputId = "generate_report", 
+                                                   label = "Generate Reports", 
+                                                   width = "200px")), 
+                               
+                               column(
+                                 width = 3, 
+                                 
+                                 selectInput(inputId = 'comp_leagues', 
+                                     label = "Collect Percentiles Across Leagues:", 
+                                     choices = sort(unique(dash_df$league_name)), 
+                                     selected = c("Major League Soccer", top_5_leagues), 
+                                     multiple = T), 
+                                 
+                                 selectInput(inputId = 'select_season', 
+                                               label = "Select a Season", 
+                                               choices = sort(unique(dash_df$season)), 
+                                               selected = c('2022/2023',
+                                                            '2023'), 
+                                     multiple = T
+                                     ), 
+                                 
+                                 uiOutput('scouter_positions_filter'), 
+                                 
+                               ), 
+                               
+                               column(
+                                 width = 3, 
+                                 
+                                 sliderInput(inputId = 'similar_player_age_filter', 
+                                  label = "Age Range for Comparisons", 
+                                  value = c(20,35), 
+                                  min = min(dash_df$summary_age, na.rm = T), 
+                                  max = max(dash_df$summary_age, na.rm = T)), 
+                                 
+                                 sliderInput(inputId = 'minutes_to_limit', 
+                                      label = "Limit Players by Minutes Played:", 
+                                      min = 0, 
+                                      max = max(dash_df$summary_min), 
+                                      value = c(350, 1000))
+                               )
+                               )
+                         )),
                 
                 tabPanel(title = "Player Profile"
                          ),

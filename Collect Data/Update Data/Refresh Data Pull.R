@@ -72,8 +72,8 @@ if(length(links_in_upate) == 0){
   
   ## making sure that when the data is updated on the website, we do not store two duplicated records in the large data set
   older_data %>%
-    arrange(league_name, game_date, fb_ref_match_link, summary_player, team_name) %>% 
-    distinct(league_name, game_date, fb_ref_match_link, summary_player, team_name, .keep_all = T) -> older_data
+    arrange(league_name, game_date, summary_player, team_name) %>% 
+    distinct(league_name, game_date, summary_player, team_name, .keep_all = T) -> older_data
   
         print("Looking for duplicate league names (if any)")
         nms <- 
@@ -204,12 +204,14 @@ if(length(links_in_upate) != 0){
     
   ## making sure that when the data is updated on the website, we do not store two duplicated records in the large data set
   refreshed_data %>%
-    arrange(league_name, game_date, fb_ref_match_link, summary_player, team_name) %>% 
-    distinct(league_name, game_date, fb_ref_match_link, summary_player, team_name, .keep_all = T) -> refreshed_data
+    arrange(league_name, game_date, summary_player, team_name) %>% 
+    distinct(league_name, game_date, summary_player, team_name, .keep_all = T)-> refreshed_data
   }
         
   if(is.null(new_data)){
-    refreshed_data = older_data
+    refreshed_data = older_data %>%
+      arrange(league_name, game_date, summary_player, team_name) %>% 
+      distinct(league_name, game_date, summary_player, team_name, .keep_all = T)
   }
 ##################
 
