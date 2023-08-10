@@ -183,7 +183,7 @@ server_side <-
     
       same_name_teams <- 
         reactive(dash_df[summary_player %in% selected_player_profile_name() ] %>% 
-                 select(team_name) %>% unique() %>% unlist() %>% sort() %>% 
+                 select(team_name) %>% unique() %>% unlist() %>% 
                      set_names(NULL))
     
       output$same_name_team_picker <- 
@@ -198,7 +198,7 @@ server_side <-
     
       same_name_leagues <- 
         reactive(dash_df[summary_player %in% selected_player_profile_name() ] %>% 
-                 select(league_name) %>% unique() %>% unlist() %>% sort() %>% 
+                 select(league_name) %>% unique() %>% unlist() %>% 
                      set_names(NULL))
     
       output$same_name_leagues_picker <- 
@@ -212,7 +212,7 @@ server_side <-
        
       player_seasons <- 
         reactive(dash_df[summary_player %in% selected_player_profile_name() ] %>% 
-                 select(season) %>% unique() %>% unlist() %>% sort() %>% 
+                 select(season) %>% unique() %>% unlist() %>% 
                      set_names(NULL))
     
       
@@ -233,9 +233,7 @@ server_side <-
                        selected = 
                         strsplit(
                               gsub("[0-9()]", "", 
-                                   dash_df[summary_player == selected_player_profile_name() & 
-                                             season %in% player_seasons()[length(player_seasons())] & 
-                                             team_name %in% same_name_teams()[length(same_name_teams())] ]$all_positions %>% unlist()), 
+                                   dash_df[summary_player == selected_player_profile_name()  ]$all_positions %>% unlist()), 
                               ", ")[[1]], 
                       multiple = T
                         )
@@ -275,7 +273,12 @@ body <-
                               .skin-green .main-sidebar {
                                   background-color:  #36454f;
                                   font-size: 20px
-                                                      }'
+                                                      }
+                              /* Custom styles for the tooltip container */
+                              .tooltip.bs.tooltip {
+                                max-width: 600px; /* Adjust the maximum width as needed */
+                              }
+                              '
                               ))), 
     tabItems(
       tabItem(tabName = "intro", 
@@ -404,19 +407,58 @@ body <-
                                   actionButton(inputId = "go", 
                                             label = "Find Teams and Seasons", 
                                             width = "200px")),
-                           
+                             
+                             bsTooltip(id = "go", 
+                                       title = "Pushing this button updates table of teams, leagues, and seasons where a player name occurs",
+                                       placement = "bottom", 
+                                       trigger = "hover", 
+                                       options = list(container = "body")), 
+               
                            column(width = 3, 
+                                fluidRow(
+                                  bsButton(
+                                    inputId = "type_cog", 
+                                    label = icon("cog"),
+                                    style = "info", 
+                                    size = "extra-small"
+                                  ),
+                                  bsButton(
+                                    inputId = "type_question", 
+                                    label = icon("question"),
+                                    style = "info", 
+                                    size = "extra-small"
+                                  )
+                                  ), 
+                                  
+                                  bsTooltip("type_cog",
+                                    title = "Make sure player name includes all special charachters, refer to the Helper Tab. ",
+                                    placement = "right",
+                                    trigger = "hover", 
+                                    options = list(container = 'body')
+                                  ), 
+                                bsTooltip("type_question",
+                                    title = "Make sure player name has no spaces before or after the name. ",
+                                    placement = "right",
+                                    trigger = "hover", 
+                                    options = list(container = 'body')
+                                  ), 
+                              
                                   textInput(inputId = 'player_typed_name', 
-                                   label = "Type in Player Name", 
-                                   value = 'Kevin De Bruyne'),
+                                         label = "Type in Player Name", 
+                                         value = 'Kevin De Bruyne'),
                                   
                                     uiOutput('same_name_team_picker'), 
                                     uiOutput('same_name_leagues_picker'), 
                                     uiOutput('picked_player_available_seasons'), 
+                                
                                     radioButtons(inputId = "league_cup_combine", 
                                                  label = "Combine League and Cups?", 
                                                  choices = c("Yes", "No"), 
-                                                 selected = "Yes")
+                                                 selected = "Yes"), 
+                                bsTooltip(id = "league_cup_combine", 
+                                          title = "Aggreagtes season-wise data over leagues and cups. Applies to a player of choice and comparison pool.",
+                                          trigger = "hover", 
+                                          placement = "left")
                                   ),
                            
                            column(width = 6, 
@@ -429,7 +471,12 @@ body <-
                                column(width = 3, 
                                       actionButton(inputId = "generate_report", 
                                                    label = "Generate Reports", 
-                                                   width = "200px")), 
+                                                   width = "200px"), 
+                                      
+                                      bsTooltip(id = "generate_report", 
+                                                placement = "bottom", 
+                                                trigger = "hover", 
+                                                title = "Pushing this button generates reports on two next tabs based on selected parameters. ")), 
                                
                                column(
                                  width = 3, 
