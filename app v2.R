@@ -169,7 +169,7 @@ player_profile_reactive_df <-
           league_name %in% COMP_LEAGUES &
           grepl(
                paste(COMP_POSITIONS, collapse = "|"),
-               all_positions) &
+               dominant_position) &
           summary_age >= COMP_AGE_START  &
           summary_age <= COMP_AGE_END &
           
@@ -194,7 +194,7 @@ player_profile_reactive_df <-
                 league_name %in% COMP_LEAGUES &
                 grepl(
                      paste(COMP_POSITIONS, collapse = "|"),
-                     all_positions) &
+                     dominant_position) &
                 summary_age >= COMP_AGE_START  &
                 summary_age <= COMP_AGE_END &
                 
@@ -326,12 +326,368 @@ player_profile_reactive_df <-
         select(summary_player,	season,	team_name, league_name, everything())  -> comp_df
         
       target_df <- rbind(target_df, comp_df) 
+      
     }
     
+      target_df <- 
+        target_df %>% 
+        left_join(
+          RAW_DATA %>% select(
+            summary_player, league_name, team_name,season, all_positions, dominant_position
+          ) , 
+          by = c('summary_player', 'league_name', 'team_name','season')
+        ) %>% 
+        select(summary_player, league_name, team_name,season, all_positions, dominant_position, everything())
+      
     return(target_df)
     
   }
 
+percentile_data_frame_one_player <- 
+  function(
+    DATA, 
+    PLAYER, 
+    TEAM
+  ){
+    
+    # selected player data 
+    player_df <-  DATA[summary_player %in% PLAYER] 
+    player_min <- sum(player_df$summary_min) 
+    
+    player_df <- player_df %>% dplyr::select(-all_of(remove_colnames)) %>% 
+      summarise(across(everything(), sum))
+    
+    player_df_per_90 <- player_df
+    player_df_per_90 <- player_df_per_90 %>% mutate_all(~. / player_min * 90)
+    
+    # other players data, which we compare our selected player to 
+    league_stat <- DATA[summary_player != PLAYER]
+    
+    league_stat <- 
+      league_stat %>% 
+        group_by(summary_player) %>% 
+        dplyr::select(-all_of(setdiff(remove_colnames, "summary_min"))) %>%  ## keep summary minutes in the data for now
+        summarise(across(everything(), sum))
+    
+    league_stat <- na.omit(league_stat) # first remove observations and then create minutes vector 
+    minutes <- league_stat$summary_min
+    
+#    colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]
+    
+    league_stat <- league_stat %>% dplyr::select(-all_of(colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]))
+    
+    league_stat_per_90 <- league_stat 
+    league_stat_per_90 <- league_stat_per_90 %>% mutate_all(~. / minutes * 90)
+    
+    # percentiles for total aggregated statistics
+    player_stat <- player_df %>% unlist()
+    
+    player_df_percentile <- 
+      league_stat %>% 
+        summarise(across(everything(), 
+                         # calculate percentiles using unique values of metrics of other players 
+                         ~sum(unique(.) <= player_stat[match(cur_column(), names(league_stat))])/length(unique(.))
+                         )
+                  ) -> int_res 
+    
+    
+    names <- names(int_res)
+    percentiles <- int_res %>% t()
+    
+    
+    # percentiles for aggregated per 90
+    player_stat_per_90 <- player_df_per_90 %>% unlist()
+    
+    player_df_percentile_per_90 <- 
+      league_stat_per_90 %>% 
+        summarise(across(everything(), 
+                         # calculate percentiles using unique values of metrics of other players 
+                         ~sum(unique(.) <= player_stat_per_90[match(cur_column(), names(league_stat_per_90))])/length(unique(.))
+                         )
+                  ) -> int_res2
+  
+    percentiles_per_90 <- int_res2 %>% t()
+    
+    f <- data.frame(
+      names, 
+      player_stat, 
+      percentiles,
+      player_stat_per_90, 
+      percentiles_per_90
+    )  
+
+    
+    return(f)
+  }
+
+
+all_features_ranked <- 
+  function(
+    REACTIVE_DATA){
+
+    
+    data_dict_f <- 
+        data_dict %>% 
+        select(
+          Data.Frame.Name, 
+          Pretty.Name.from.FBref,
+          stat_cat
+        ) %>% 
+        mutate(
+          names = Data.Frame.Name, 
+          descr = Pretty.Name.from.FBref
+        )
+    
+    f <- REACTIVE_DATA
+    rownames(f) <- NULL
+    
+    f <- 
+      f %>% 
+      left_join(data_dict_f, 
+                by = 'names')  %>% 
+      arrange(-percentiles_per_90)
+  
+    
+    f %>% 
+      select(
+            stat_cat, 
+            descr, 
+            player_stat, 
+            percentiles,
+            player_stat_per_90, 
+            percentiles_per_90) -> f
+      
+#    colnames(f) <- c("Descr", "st", "p_st", "st_90", "p_st_90")
+    
+    colnames(f) <- c("Stat. Category","Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile")
+    datatable(f, rownames=FALSE,
+              options = 
+                    list(
+                     scrollX = TRUE,
+                     scrollY = TRUE,
+                     autoWidth = TRUE, 
+                     rownames = F
+                    )
+              ) %>% 
+      
+      formatRound(columns = c(3,4,5, 6), 
+                      digits = 2)
+    
+  }
+
+dynamic_table_summary <- 
+  function(
+    REACTIVE_DATA,  
+    COLUMNS){
+
+    
+    data_dict_f <- 
+        data_dict %>% 
+        select(
+          Data.Frame.Name, 
+          Pretty.Name.from.FBref,
+          stat_cat
+        ) %>% 
+        mutate(
+          names = Data.Frame.Name, 
+          descr = Pretty.Name.from.FBref
+        )
+    
+    f <- REACTIVE_DATA
+    rownames(f) <- NULL
+    
+    f <- 
+      f %>% 
+      left_join(data_dict_f, 
+                by = 'names') 
+    
+    
+    f <- f[f$descr %in% COLUMNS,]
+    
+    f %>% 
+      select(
+            stat_cat, 
+            descr, 
+            player_stat, 
+            percentiles,
+            player_stat_per_90, 
+            percentiles_per_90) -> f
+      
+#    colnames(f) <- c("Descr", "st", "p_st", "st_90", "p_st_90")
+    
+    f$percentiles <- paste0(round(f$percentiles, 4) * 100, "%")
+    f$percentiles_per_90  <- paste0(round(f$percentiles_per_90, 4) * 100, "%")
+    
+    colnames(f) <- c("Stat. Category","Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile")
+    datatable(f, rownames=FALSE,
+              options = 
+                    list(
+                     scrollX = TRUE,
+                     scrollY = TRUE,
+                     autoWidth = TRUE, 
+                     rownames = F
+                    )
+              ) %>% 
+      
+      formatRound(columns = c(5), 
+                      digits = 2)
+    
+  }
+
+like_pizza_but_bar_graph <- 
+  function(
+    REACTIVE_DATA, 
+    COLUMNS
+  ){
+    
+
+    data_dict_f <- 
+        data_dict %>% 
+        select(
+          Data.Frame.Name, 
+          Pretty.Name.from.FBref,
+          stat_cat
+        ) %>% 
+        mutate(
+          names = Data.Frame.Name, 
+          descr = Pretty.Name.from.FBref
+        )
+    
+    f <- REACTIVE_DATA
+    rownames(f) <- NULL
+    
+    f <- 
+      f %>% 
+      left_join(data_dict_f, 
+                by = 'names') 
+    
+    
+    f <- f[f$descr %in% COLUMNS,]
+    
+    f$descr <- 
+      factor(f$descr, 
+             levels = f %>% arrange(stat_cat, percentiles_per_90) %>% select(descr) %>% unlist())
+    
+    with(f, 
+         f %>% 
+          plot_ly() %>% 
+            add_trace(
+              x = ~descr, 
+              y = ~percentiles_per_90, 
+              color = ~stat_cat, 
+              
+              type = 'bar', 
+              
+              text = paste(
+                'Name: ', descr, 
+                "<br>Stat per 90: ", round(player_stat_per_90, 2), 
+                "<br>Percentile: ", round(percentiles_per_90,2)
+              ), 
+              
+              hoverinfo = 'text'
+            ) %>% 
+           
+           layout(xaxis = list(title = ""), 
+                  yaxis = list(title = "Percentile"))
+    )
+  }
+
+
+all_features_quantiles_histogram <- 
+  function(
+    REACTIVE_DATA
+  ){
+    
+    f <- REACTIVE_DATA
+
+    data_dict_f <- 
+        data_dict %>% 
+        select(
+          Data.Frame.Name, 
+          Pretty.Name.from.FBref,
+          stat_cat
+        ) %>% 
+        mutate(
+          names = Data.Frame.Name, 
+          descr = Pretty.Name.from.FBref
+        )
+    
+    f <- f %>% 
+      left_join(data_dict_f, 
+                by = 'names')
+  
+    f %>% 
+      plot_ly(
+        x =~ percentiles_per_90, 
+        group =~ stat_cat, 
+        color =~ stat_cat, 
+        alpha = .75,
+        type = "histogram",
+        nbinsx = 1/.1,
+        marker = list(line = list(color = "#6d8085", width = 1))
+      ) %>% 
+      layout(barmode = "overlay",
+             bargap=0.01, 
+             legend = list(orientation = "h",
+                           x = 0, y = -0.2), 
+             xaxis = list(title = "Quantiles of Statistics per 90 Minutes",
+                          tickvals = seq(from = 0, to = 1, by = 0.05)), 
+             yaxis = list(title = "Count"))
+
+    
+  }
+
+all_quantiles_summary <- 
+  function(
+    REACTIVE_DATA
+  ){
+    f <- REACTIVE_DATA
+
+    data_dict_f <- 
+        data_dict %>% 
+        select(
+          Data.Frame.Name, 
+          Pretty.Name.from.FBref,
+          stat_cat
+        ) %>% 
+        mutate(
+          names = Data.Frame.Name, 
+          descr = Pretty.Name.from.FBref
+        )
+    
+    f <- f %>% 
+      left_join(data_dict_f, 
+                by = 'names')
+    
+    f %>% 
+      group_by(
+        stat_cat
+      ) %>% 
+      summarise(
+        n = n(), 
+        mean = mean(percentiles_per_90), 
+        median = median(percentiles_per_90), 
+        spread = sd(percentiles_per_90)
+      ) %>% 
+      
+      mutate(
+        mean = paste0(round(mean, 4)*100, "%"),
+        median = paste0(round(median, 4)*100, "%"),
+        spread = round(spread, 4)*100
+      ) %>% 
+      
+      datatable(rownames=FALSE,
+                colnames = c("Stat. Category", "Number fof Features", "Average Quantile", "Median Quantile", "Standard Deviation"), 
+                options = 
+                    list(
+                     scrollX = TRUE,
+                     scrollY = TRUE,
+                     autoWidth = TRUE, 
+                     rownames = F
+                    )
+                  )
+    
+  }
                                             ########################
                                             # LOAD UP SERVER SIDE #
                                             ########################
@@ -473,6 +829,8 @@ server_side <-
         )
       
       ########## PLAYER PROFILE SUMMARY PAGE 
+      
+      ##### data frame that is limited to front page parameters 
       reactive_player_summary_df <- 
         reactive(
           player_profile_reactive_df(
@@ -492,7 +850,51 @@ server_side <-
             )
         )
       
-      output$reactive_player_summary_df <- renderDataTable(reactive_player_summary_df() %>% datatable())
+      percentile_data_frame_one_player_df <- 
+        reactive(
+          percentile_data_frame_one_player(
+            DATA = reactive_player_summary_df(), 
+            PLAYER = input$player_typed_name, 
+            TEAM = input$select_team_same_name
+          ))
+    
+      output$all_features_ranked <- 
+        renderDataTable(
+          all_features_ranked(
+            REACTIVE_DATA =  percentile_data_frame_one_player_df()
+            )
+          )
+      output$dynamic_table_summary <- 
+        renderDataTable(
+          dynamic_table_summary(
+            REACTIVE_DATA =  percentile_data_frame_one_player_df(), 
+            COLUMNS = input$feature
+            )
+          )
+      
+      output$like_pizza_but_bar_graph <- 
+        renderPlotly(
+          like_pizza_but_bar_graph(
+            COLUMNS = input$feature, 
+            REACTIVE_DATA = percentile_data_frame_one_player_df()  
+          )
+      )
+      
+      output$all_features_quantiles_histogram <- 
+        renderPlotly(
+          all_features_quantiles_histogram(
+            REACTIVE_DATA = percentile_data_frame_one_player_df()
+          )        
+        )
+      
+      output$all_quantiles_summary <- 
+        renderDataTable(
+          all_quantiles_summary(
+            REACTIVE_DATA = percentile_data_frame_one_player_df()
+          )        
+        )
+      
+      ##### data frame
   }
 
                                             ########################
@@ -775,7 +1177,61 @@ body <-
                          )),
                 
                 tabPanel(title = "Player Profile", 
-                         dataTableOutput('reactive_player_summary_df')
+                         fluidPage(
+                           column(width = 4, 
+                                  fluidRow(
+                                    box(width = 12, 
+                                        dataTableOutput('all_features_ranked'))
+                                  )), 
+                           
+                           column(width = 8, 
+                                  tabsetPanel(
+                                    tabPanel(title = "Quantile Summary", 
+                                             fluidRow(
+                                                
+                                                  plotlyOutput('all_features_quantiles_histogram'), 
+                                                  dataTableOutput('all_quantiles_summary')
+                                                
+                                              )
+                                             ),
+                                    tabPanel(title = "Select Features", 
+                                        fluidRow(
+                                          column(width = 6, 
+                                                 
+                                                  plotlyOutput('like_pizza_but_bar_graph'), 
+                                                 
+                                                    selectInput(
+                                                       inputId="feature", 
+                                                       selected = c(
+                                                                    'Goals'
+                                                                    ,'Expected Goals'
+                                                                    ,'Passes Completed'
+                                                                    ,'Total Passing Distance'
+                                                                    ,'Number of players tackled'	
+                                                                    ,'Dribbles Challenged'
+                                                                    ,'Progressive Carries'	
+                                                                    ,'Miscontrols'
+                                                                    ),
+                                                        label="Choose Variables for Table",
+                                                       choices=  
+                                                         setdiff( # remove some columns from options here 
+                                                           data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(), 
+                                                           remove_colnames_dict
+                                                         ),
+                                                       multiple=TRUE)
+                                              
+                                          ), 
+                                          column(
+                                            width = 6,
+                                            dataTableOutput('dynamic_table_summary')
+                                          )
+                                        )
+                                  
+                                  )
+                                  )
+                                    
+                         )
+                         )
                          ),
                 
                 tabPanel(title = "Similar Players")
