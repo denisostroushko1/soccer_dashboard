@@ -62,6 +62,7 @@ standard_box_style = "overflow-y: scroll;overflow-x: scroll;"
                                             # FUNCTION TO BE USED ON THE SERVER SIDE #
                                             ##########################################
                                             
+### data dictionary stuff
 
 display_players <- 
   function(
@@ -118,6 +119,8 @@ display_players <-
             unique() %>% 
             datatable()
   }
+
+### player profile - summary page 
 
 player_profile_reactive_df <- 
   function(
@@ -176,12 +179,8 @@ player_profile_reactive_df <-
           summary_min >= COMP_MINUTES_START &
           summary_min <= COMP_MINUTES_END &
           
-          !(
-            summary_player %in% TARGET_PLAYER &
-            season %in% TARGET_PLAYER_SEASON &
-            team_name %in% TARGET_PLAYER_TEAM &
-            league_name %in% TARGET_PLAYER_LEAGUE
-          )
+            # remove all data for a target player
+          summary_player != TARGET_PLAYER 
         ) %>% 
         select(-all_of(remove_colnames_keep_games_mins)) -> comp_df
       
@@ -200,13 +199,9 @@ player_profile_reactive_df <-
                 
                 summary_min >= COMP_MINUTES_START &
                 summary_min <= COMP_MINUTES_END &
-                
-                !(
-                  summary_player %in% TARGET_PLAYER &
-                  season %in% TARGET_PLAYER_SEASON &
-                  team_name %in% TARGET_PLAYER_TEAM &
-                  league_name %in% TARGET_PLAYER_LEAGUE
-                )
+                      
+                  # remove all data for a target player
+                summary_player != TARGET_PLAYER 
               ) %>% 
               select(summary_player, league_name, team_name, season, summary_age) , 
             comp_df
@@ -302,12 +297,9 @@ player_profile_reactive_df <-
           
           summary_min >= COMP_MINUTES_START &
           summary_min <= COMP_MINUTES_END &
-          
-          !(
-            summary_player %in% TARGET_PLAYER &
-            season %in% TARGET_PLAYER_SEASON &
-            team_name %in% TARGET_PLAYER_TEAM
-          )
+                      
+                  # remove all data for a target player
+                summary_player != TARGET_PLAYER 
         ) %>% 
         select(-all_of(
            c("league_name","all_positions","summary_age","dominant_position")
@@ -420,7 +412,6 @@ percentile_data_frame_one_player <-
     return(f)
   }
 
-
 all_features_ranked <- 
   function(
     REACTIVE_DATA){
@@ -519,19 +510,20 @@ dynamic_table_summary <-
     f$percentiles_per_90  <- paste0(round(f$percentiles_per_90, 4) * 100, "%")
     
     colnames(f) <- c("Stat. Category","Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile")
-    datatable(f, rownames=FALSE,
-              options = 
-                    list(
-                     scrollX = TRUE,
-                     scrollY = TRUE,
-                     autoWidth = TRUE, 
-                     rownames = F
-                    )
-              ) %>% 
-      
-      formatRound(columns = c(5), 
-                      digits = 2)
-    
+    f
+    # datatable(f, rownames=FALSE,
+    #           options = 
+    #                 list(
+    #                  scrollX = TRUE,
+    #                  scrollY = TRUE,
+    #                  autoWidth = TRUE, 
+    #                  rownames = F
+    #                 )
+    #           ) %>% 
+    #   
+    #   formatRound(columns = c(5), 
+    #                   digits = 2)
+    # 
   }
 
 like_pizza_but_bar_graph <- 
@@ -588,7 +580,9 @@ like_pizza_but_bar_graph <-
             ) %>% 
            
            layout(xaxis = list(title = ""), 
-                  yaxis = list(title = "Percentile"))
+                  yaxis = list(title = "Percentile",
+                               standoff = 20)
+                  )
     )
   }
 
@@ -674,20 +668,23 @@ all_quantiles_summary <-
         mean = paste0(round(mean, 4)*100, "%"),
         median = paste0(round(median, 4)*100, "%"),
         spread = round(spread, 4)*100
-      ) %>% 
-      
-      datatable(rownames=FALSE,
-                colnames = c("Stat. Category", "Number fof Features", "Average Quantile", "Median Quantile", "Standard Deviation"), 
-                options = 
-                    list(
-                     scrollX = TRUE,
-                     scrollY = TRUE,
-                     autoWidth = TRUE, 
-                     rownames = F
-                    )
-                  )
+      ) # %>% 
+      # 
+      # datatable(rownames=FALSE,
+      #           colnames = c("Stat. Category", "Number fof Features", "Average Quantile", "Median Quantile", "Standard Deviation"), 
+      #           options = 
+      #               list(
+      #                scrollX = TRUE,
+      #                scrollY = TRUE,
+      #                autoWidth = TRUE, 
+      #                rownames = F
+      #               )
+      #             )
     
   }
+
+#### player profile -- similar players 
+
                                             ########################
                                             # LOAD UP SERVER SIDE #
                                             ########################
@@ -770,7 +767,7 @@ server_side <-
     
       same_name_teams <- 
         reactive(dash_df[summary_player %in% selected_player_profile_name() ] %>% 
-                 select(team_name) %>% unique() %>% unlist() %>% 
+                 select(team_name) %>% unique() %>% unlist() %>% sort() %>% 
                      set_names(NULL))
     
       output$same_name_team_picker <- 
@@ -779,13 +776,14 @@ server_side <-
               selectInput(inputId = 'select_team_same_name', 
                            label = "Pick a team. Likely only 1 available", 
                            choices = same_name_teams(), 
-                           selected = same_name_teams()[length(same_name_teams())])
+                           selected = dash_df[dash_df$summary_player == selected_player_profile_name() ][1,]$team_name
+                          )
           })
      
     
       same_name_leagues <- 
         reactive(dash_df[summary_player %in% selected_player_profile_name() ] %>% 
-                 select(league_name) %>% unique() %>% unlist() %>% 
+                 select(league_name) %>% unique() %>% unlist() %>% sort() %>% 
                      set_names(NULL))
     
       output$same_name_leagues_picker <- 
@@ -794,7 +792,8 @@ server_side <-
               selectInput(inputId = 'select_league', 
                            label = "Select Competiton", 
                            choices = same_name_leagues(), 
-                           selected = same_name_leagues()[length(same_name_leagues())])
+                           selected = dash_df[dash_df$summary_player == selected_player_profile_name()][1,]$league_name
+                          )
           })
        
       player_seasons <- 
@@ -808,8 +807,9 @@ server_side <-
               
               selectInput(inputId = 'select_season', 
                            label = "Select a Season", 
-                           choices = player_seasons(), 
-                           selected = player_seasons()[length(player_seasons())])
+                           choices = player_seasons(),  
+                           selected = dash_df[dash_df$summary_player == selected_player_profile_name()][1,]$season
+                          )
           })
       
       # make sure that we have observer event for the "Update Report" button 
@@ -865,11 +865,12 @@ server_side <-
             )
           )
       output$dynamic_table_summary <- 
-        renderDataTable(
+        renderTable({
           dynamic_table_summary(
             REACTIVE_DATA =  percentile_data_frame_one_player_df(), 
             COLUMNS = input$feature
-            )
+            )}, 
+          striped = T
           )
       
       output$like_pizza_but_bar_graph <- 
@@ -888,7 +889,7 @@ server_side <-
         )
       
       output$all_quantiles_summary <- 
-        renderDataTable(
+        renderTable(
           all_quantiles_summary(
             REACTIVE_DATA = percentile_data_frame_one_player_df()
           )        
@@ -1185,56 +1186,83 @@ body <-
                                   )), 
                            
                            column(width = 8, 
-                                  tabsetPanel(
-                                    tabPanel(title = "Quantile Summary", 
-                                             fluidRow(
-                                                
-                                                  plotlyOutput('all_features_quantiles_histogram'), 
-                                                  dataTableOutput('all_quantiles_summary')
-                                                
-                                              )
-                                             ),
-                                    tabPanel(title = "Select Features", 
-                                        fluidRow(
-                                          column(width = 6, 
-                                                 
-                                                  plotlyOutput('like_pizza_but_bar_graph'), 
-                                                 
-                                                    selectInput(
-                                                       inputId="feature", 
-                                                       selected = c(
-                                                                    'Goals'
-                                                                    ,'Expected Goals'
-                                                                    ,'Passes Completed'
-                                                                    ,'Total Passing Distance'
-                                                                    ,'Number of players tackled'	
-                                                                    ,'Dribbles Challenged'
-                                                                    ,'Progressive Carries'	
-                                                                    ,'Miscontrols'
-                                                                    ),
-                                                        label="Choose Variables for Table",
-                                                       choices=  
-                                                         setdiff( # remove some columns from options here 
-                                                           data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(), 
-                                                           remove_colnames_dict
-                                                         ),
-                                                       multiple=TRUE)
-                                              
-                                          ), 
-                                          column(
-                                            width = 6,
-                                            dataTableOutput('dynamic_table_summary')
-                                          )
-                                        )
+                                  
+                                  fluidRow(
+                                    box(width = 12, 
+                                      column(width = 7, plotlyOutput('all_features_quantiles_histogram')), 
+                                      column(width = 5, tableOutput('all_quantiles_summary'))
+                                    )
+                                  ),
+                                  
+                                  fluidRow(
+                                  box(  
+                                    column(width = 6, 
+                                           
+                                            plotlyOutput('like_pizza_but_bar_graph'), 
+                                           
+                                              selectInput(
+                                                 inputId="feature", 
+                                                 selected = c(
+                                                              'Goals'
+                                                              ,'Expected Goals'
+                                                              ,'Passes Completed'
+                                                              ,'Total Passing Distance'
+                                                              ,'Number of players tackled'	
+                                                              ,'Dribbles Challenged'
+                                                              ,'Progressive Carries'	
+                                                              ,'Miscontrols'
+                                                              ),
+                                                  label="Choose Variables for Table",
+                                                 choices=  
+                                                   setdiff( # remove some columns from options here 
+                                                     data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(), 
+                                                     remove_colnames_dict
+                                                   ),
+                                                 multiple=TRUE)
+                                        
+                                    ), 
+                                    column(
+                                      width = 6,
+                                      tableOutput('dynamic_table_summary') 
+                                    ), 
+                                    width = 12)
+                                  )
                                   
                                   )
-                                  )
-                                    
-                         )
                          )
                          ),
                 
-                tabPanel(title = "Similar Players")
+                tabPanel(title = "Similar Players", 
+                         tabsetPanel(
+                           tabPanel("Best Features Based", 
+                                    fluidPage(
+                                      column(width = 3,
+                                             box(numericInput(inputId = 'target_sim_players', 
+                                                              label = "Number of Similar Players to Find", 
+                                                              min = 0, 
+                                                              max = 1000, 
+                                                              value = 30), 
+                                                 numericInput(inputId = 'top_features_used', 
+                                                              label = "Number of Features to Use", 
+                                                              min = 0, 
+                                                              max = 100, 
+                                                              value = 20), 
+                                                     width = 12)
+                     ), 
+                                      column(width = 9)
+                                    )
+                                    ),
+                           tabPanel("All Features Based",
+                                    fluidPage(
+                                      column(width = 3), 
+                                      column(width = 9)
+                                    )),
+                           tabPanel("Selected Features Based",
+                                    fluidPage(
+                                      column(width = 3), 
+                                      column(width = 9)
+                                    ))
+                         ))
                 
               )),
       tabItem(tabName = "two_player_comparison"), 
