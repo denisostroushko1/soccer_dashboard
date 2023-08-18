@@ -50,6 +50,11 @@ jobs:
               any::stringr
               any::kableExtra
               knitr@1.40
+              any::ggsoccer
+              any::curl
+              any::shinyBS
+              any::shinycssloaders
+              any::flexdashboard
                
       - name: Execute R Script
         env:

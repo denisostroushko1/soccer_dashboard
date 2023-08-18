@@ -249,22 +249,21 @@ player_profile_reactive_df <-
                 comp_df) %>% 
           mutate(
             comb_positions =  gsub("(\\w)\\((\\d+)\\)", "\\1 ( \\2 )", all_positions)
-
-
-          )
+          ) %>% 
+          select(-all_positions, -summary_age)
+        
     }else{
-      
       
       players <- RAW_DATA %>% filter(league_name %in% COMP_LEAGUES) %>% select(summary_player) %>% unique() %>% unlist()
       
       player_leagues <- 
         RAW_DATA %>% 
-          filter(season %in% COMP_SEASONS) %>% 
+          filter(season %in% COMP_SEASONS | (season == TARGET_PLAYER_SEASON & summary_player == TARGET_PLAYER)) %>% 
           select(summary_player, season, team_name, league_name) %>% unique() 
       
       home_leagues <- 
         RAW_DATA %>% 
-          filter(season %in% COMP_SEASONS & 
+          filter((season %in% COMP_SEASONS | (season == TARGET_PLAYER_SEASON & summary_player == TARGET_PLAYER)) & 
                    !(league_name %in% c(
                      "UEFA Champions League", 
                      "Copa Libertadores de América", 
@@ -412,10 +411,16 @@ create_field_plot <-
     
     player_data <- str_match_all(player_string, "([A-Z]+) \\( ([0-9]+) \\)")[[1]][, 2:3]
 
+    if(is.null(dim(player_data))){
+      player_df <- data.frame(var1 = player_data[1], var2 = as.integer(player_data[2]))
+    } else{
+      player_df <- data.frame(var1 = player_data[, 1], var2 = as.integer(player_data[, 2]))
+    }
     # Create a data frame
-    player_df <- data.frame(var1 = player_data[, 1], var2 = as.integer(player_data[, 2]))
+    
     # 
     I = ""
+    
     if("WB" %in% player_df$var1){
       player_df %>% filter(var1!= "WB") %>% mutate(RBC = substr(var1, 1, 1)) %>% filter(RBC %in% c("R", "L") ) %>%
         group_by(RBC) %>% summarize(s = sum(var2)) %>% arrange(-s) %>% head(1) %>% select(RBC) %>% unlist() -> I
@@ -445,8 +450,6 @@ create_field_plot <-
         label = paste0(var1, " (", var2, ")")
           )
     
-    position_coords
-
   ggplot(data = position_coords,
        aes(x = coord1, y = coord2, label = label)) +
 
@@ -467,32 +470,51 @@ percentile_data_frame_one_player <-
     PLAYER, 
     TEAM
   ){
-    
-    # selected player data 
-    player_df <-  DATA[summary_player %in% PLAYER] 
+  # selected player data 
+    player_df <-  DATA[DATA$summary_player == PLAYER & DATA$team_name == TEAM, ] 
     player_min <- sum(player_df$summary_min) 
     
-    player_df <- player_df %>% dplyr::select(-all_of(remove_colnames)) %>% 
+    col2 = colnames(player_df)
+    
+    player_df <- 
+      player_df %>% 
+      dplyr::select(
+        -all_of(
+          c(
+            "comb_positions",
+            setdiff(remove_colnames, c("dominant_position", "all_positions", "summary_age")))
+        )
+      ) %>% 
       summarise(across(everything(), sum))
     
     player_df_per_90 <- player_df
     player_df_per_90 <- player_df_per_90 %>% mutate_all(~. / player_min * 90)
     
     # other players data, which we compare our selected player to 
-    league_stat <- DATA[summary_player != PLAYER]
-    
+    league_stat <- DATA[!(DATA$summary_player == PLAYER & DATA$team_name == TEAM),]
+ 
     league_stat <- 
       league_stat %>% 
-        group_by(summary_player) %>% 
-        dplyr::select(-all_of(setdiff(remove_colnames, "summary_min"))) %>%  ## keep summary minutes in the data for now
-        summarise(across(everything(), sum))
+        group_by(summary_player, team_name) %>% 
+      
+        dplyr::select(
+        -all_of(
+          c(
+            "comb_positions",
+            setdiff(remove_colnames, c("dominant_position", "all_positions", "summary_age", "summary_min")))
+        )
+      ) %>%  ## keep summary minutes in the data for now
+      summarise(across(everything(), sum))
     
     league_stat <- na.omit(league_stat) # first remove observations and then create minutes vector 
     minutes <- league_stat$summary_min
     
 #    colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]
     
-    league_stat <- league_stat %>% dplyr::select(-all_of(colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]))
+    league_stat <- 
+      league_stat %>% 
+      ungroup() %>% 
+      dplyr::select(-all_of(colnames(league_stat)[which(colnames(league_stat) %in% remove_colnames)]))
     
     league_stat_per_90 <- league_stat 
     league_stat_per_90 <- league_stat_per_90 %>% mutate_all(~. / minutes * 90)
@@ -532,8 +554,7 @@ percentile_data_frame_one_player <-
       percentiles,
       player_stat_per_90, 
       percentiles_per_90
-    )  
-
+    ) 
     
     return(f)
   }
@@ -576,21 +597,139 @@ all_features_ranked <-
       
 #    colnames(f) <- c("Descr", "st", "p_st", "st_90", "p_st_90")
     
-    colnames(f) <- c("Stat. Category","Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile")
-    datatable(f, rownames=FALSE,
-              options = 
-                    list(
-                     scrollX = TRUE,
-                     scrollY = TRUE,
-                     autoWidth = TRUE, 
-                     rownames = F
-                    )
-              ) %>% 
-      
-      formatRound(columns = c(3,4,5, 6), 
-                      digits = 2)
+    colnames(f) <- c("Stat. Category","Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile per 90")
+    
+    return(f)
+  }
+
+average_quantiles_data <- 
+  function(
+    REACTIVE_DATA
+  ){
+    return(
+      REACTIVE_DATA %>% 
+        group_by(
+          `Stat. Category`
+        ) %>% 
+        summarize(
+          mean = mean(`Percentile per 90`), 
+          sd = sd(`Percentile per 90`)
+        ) 
+    )
+  }
+
+create_gauge <- 
+  function(
+    REACTIVE_DATA, 
+    CATEGORY){
+    
+    REACTIVE_DATA %>% 
+      filter(`Stat. Category` == CATEGORY) %>% 
+      select(mean) %>% round(.,4) %>% 
+      mutate(mean = mean*100) %>% unlist() %>% setNames(NULL)-> gauge_value
+    
+    REACTIVE_DATA %>% 
+      filter(`Stat. Category` == CATEGORY) %>% 
+      select(sd) %>% round(.,4) %>% 
+      mutate(sd = sd*100) %>% unlist() %>% setNames(NULL)-> spread
+    
+    gradient_colors <- colorRampPalette(c("red", "yellow", "orange", "green"))(100)
+    color_index <- round(gauge_value)
+    color <- gradient_colors[color_index]
+        
+    m <- paste0(
+      "Average Quantile of\n",CATEGORY, " Varaibles. \nSpread: ",spread
+    )
+    
+    gauge(
+      value = gauge_value, 
+      min = 0, 
+      max = 100, 
+      symbol = "%", 
+      label = m,
+      gaugeSectors(
+        success = c(70, 100),
+        warning = c(40, 70),
+        danger = c(0, 40),
+        color = color
+      )
+    )
     
   }
+
+
+player_season_summary <- 
+  function(
+    DATA, 
+    PLAYER, 
+    SEASON, 
+    TEAM
+    ){
+    
+    DATA[summary_player %in% PLAYER & 
+     team_name %in% TEAM & 
+        season %in% SEASON] %>% 
+      
+      group_by(league_name) %>% 
+      summarise(
+        summary_player = summary_player, 
+        summary_age = summary_age, 
+        games_played = games_played, 
+        summary_min = summary_min, 
+        positions = all_positions
+        
+      ) -> out
+    
+    league <- DATA[summary_player %in% PLAYER & 
+     team_name %in% TEAM & 
+        season %in% SEASON]$league_name %>% unlist()
+    
+    ages <- DATA[
+     league_name %in% league & 
+        season %in% SEASON]$summary_age 
+    
+    out$summary_age <- paste0(out$summary_age, 
+                              paste0("(", 100 * round(
+                                length(which(
+                                  out$summary_age >= ages)) /
+                                  length(ages), 2),"%)"))
+    
+    
+    games <- DATA[
+     league_name %in% league & 
+        season %in% SEASON]$games_played 
+    
+    out$games_played <- paste0(out$games_played, 
+                              paste0("(", 100 * round(
+                                length(which(
+                                  out$games_played >= games)) /
+                                  length(games), 2),"%)"))
+    
+    
+    minutes <- DATA[
+     league_name %in% league & 
+        season %in% SEASON]$summary_min 
+    
+    out$summary_min <- paste0(
+                              prettyNum(out$summary_min, big.mark = ","), 
+                              paste0("(", 100 * round(
+                                length(which(
+                                  out$summary_min >= minutes)) /
+                                  length(minutes), 2),"%)"))
+    
+    out$league <- league
+    out$team <- TEAM
+    
+    out <- out %>% select(summary_player, summary_age, 
+                          team, league, games_played, summary_min,
+                          positions)
+    rownames(out) = NULL
+    colnames(out) = c('Player Name', 'Age(League Pecentile)', 
+                      "Team Name", "League Name",'Games(League Pecentile)', 'Minutes(League Pecentile)', 
+                      'Positions')
+    return(out)
+  }
+
 
 dynamic_table_summary <- 
   function(
@@ -976,27 +1115,92 @@ server_side <-
             )
         )
       
+      output$player_season_summary <- 
+        renderTable(
+          player_season_summary(
+            PLAYER = input$player_typed_name, 
+            SEASON = input$select_season,
+            DATA = dash_df,
+            TEAM = input$select_team_same_name)
+        )
+          
       output$create_field_plot <- 
         renderPlot(
           create_field_plot(
             REACTIVE_DATA = reactive_player_summary_df(),
             TARGET_PLAYER = input$player_typed_name)
         )
-      # 
-      # percentile_data_frame_one_player_df <- 
-      #   reactive(
-      #     percentile_data_frame_one_player(
-      #       DATA = reactive_player_summary_df(), 
-      #       PLAYER = input$player_typed_name, 
-      #       TEAM = input$select_team_same_name
-      #     ))
-      # 
-      # output$all_features_ranked <- 
-      #   renderDataTable(
-      #     all_features_ranked(
-      #       REACTIVE_DATA =  percentile_data_frame_one_player_df()
-      #       )
-      #     )
+
+      percentile_data_frame_one_player_df <-
+        reactive(
+          percentile_data_frame_one_player(
+            DATA = reactive_player_summary_df(),
+            PLAYER = input$player_typed_name,
+            TEAM = input$select_team_same_name
+          ))
+
+      all_features_ranked_w_names <- 
+        reactive(
+          all_features_ranked(
+            REACTIVE_DATA =  percentile_data_frame_one_player_df()
+            )
+        )
+      
+      average_quantiles_data_df <- 
+        reactive(
+          average_quantiles_data(
+            REACTIVE_DATA = all_features_ranked_w_names()
+          )
+        )
+      
+      output$attacking_gauge <- 
+        renderGauge(
+          create_gauge(
+            REACTIVE_DATA = average_quantiles_data_df(), 
+            CATEGORY = "Attacking"
+          )
+        )
+      
+      output$defensive_gauge <- 
+        renderGauge(
+          create_gauge(
+            REACTIVE_DATA = average_quantiles_data_df(), 
+            CATEGORY = "Defensive"
+          )
+        )
+      
+      output$misc_gauge <- 
+        renderGauge(
+          create_gauge(
+            REACTIVE_DATA = average_quantiles_data_df(), 
+            CATEGORY = "Misc"
+          )
+        )
+      
+      output$ball_gauge <- 
+        renderGauge(
+          create_gauge(
+            REACTIVE_DATA = average_quantiles_data_df(), 
+            CATEGORY = "On The Ball"
+          )
+        )
+      
+      output$pass_type_gauge <- 
+        renderGauge(
+          create_gauge(
+            REACTIVE_DATA = average_quantiles_data_df(), 
+            CATEGORY = "Pass Type Detail"
+          )
+        )
+      
+      output$Passing_type_gauge <- 
+        renderGauge(
+          create_gauge(
+            REACTIVE_DATA = average_quantiles_data_df(), 
+            CATEGORY = "Passing"
+          )
+        )
+      
       # output$dynamic_table_summary <- 
       #   renderTable({
       #     dynamic_table_summary(
@@ -1056,7 +1260,7 @@ sidebar <-
 
 body <-
   dashboardBody(
-        tags$head(tags$style(HTML('
+        tags$style(HTML('
                                 /* body */
                                 .content-wrapper, .right-side {
                                    background-color: #FFFFFF;
@@ -1070,8 +1274,13 @@ body <-
                               .tooltip.bs.tooltip {
                                 max-width: 600px; /* Adjust the maximum width as needed */
                               }
+                              
+                              /* Add custom CSS rules here */
+                              .gauge-text {
+                                font-size: 20px; /* Adjust the font size as needed */
+                              }
                               '
-                              ))), 
+                              )), 
     tabItems(
       tabItem(tabName = "intro", 
               HTML(
@@ -1311,10 +1520,29 @@ body <-
                          )),
                 
                 tabPanel(title = "Player Profile", 
-                         
-                           print("Hello"), 
-                           box(plotOutput('create_field_plot'), width = 12) 
-                         
+                         fluidPage(
+                           fluidRow(
+                              column(width = 6, 
+                                  tableOutput('player_season_summary') %>% withSpinner(color="#0dc5c1")
+                                  ),
+                             column(plotOutput('create_field_plot') %>% withSpinner(color="#0dc5c1"), width = 6) 
+                           ), 
+                           
+                           fluidRow(
+                             column(gaugeOutput('attacking_gauge',
+                                                width = "100%", height = "150px") %>% withSpinner(color="#0dc5c1"), 
+                                    gaugeOutput('defensive_gauge',
+                                                width = "100%", height = "150px") %>% withSpinner(color="#0dc5c1"), width = 3), 
+                              column(gaugeOutput('ball_gauge',
+                                                width = "100%", height = "150px") %>% withSpinner(color="#0dc5c1"), 
+                                    gaugeOutput('pass_type_gauge',
+                                                width = "100%", height = "150px") %>% withSpinner(color="#0dc5c1"), width = 3), 
+                              column(gaugeOutput('Passing_type_gauge',
+                                                width = "100%", height = "150px") %>% withSpinner(color="#0dc5c1"), 
+                                    gaugeOutput('misc_gauge',
+                                                width = "100%", height = "150px") %>% withSpinner(color="#0dc5c1"), width = 3)
+                           )
+                         )
                          ),
                 
                 tabPanel(title = "Similar Players", 
