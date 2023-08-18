@@ -4,6 +4,37 @@
                                             
 source("Master Packages.R")
 
+                                            ##############################
+                                            # FUNCTIONS WITH NO HOME YET #
+                                            ##############################
+                                            
+combine_strings <- function(input_strings) {
+  # Initialize an empty list to store parsed data from all strings
+  parsed_data <- list()
+  
+  # Loop through each input string
+  for (input_str in input_strings) {
+    # Split and parse the current input string
+    pairs <- strsplit(gsub("\\s+", "", input_str), ",")[[1]]
+    parsed <- setNames(as.numeric(gsub("\\D+", "", pairs)), gsub("\\d+", "", pairs))
+    names(parsed) <- gsub("\\(.*\\)", "", names(parsed))
+    
+    parsed_data <- c(parsed_data, parsed)
+  }
+  
+  # Combine and aggregate the values
+  combined <- do.call(c, parsed_data)
+  aggregated <- aggregate(values ~ ind, data = stack(combined), sum)
+  
+  # Construct the final combined string with spaces
+  combined_string <- paste(aggregated$ind, "(", aggregated$values, ")", collapse = ", ")
+  
+  return(combined_string)
+}
+
+                                            ####################################
+                                            # APP MACRO ENVIRONMENT VARIABLES #
+                                            ###################################
 top_5_leagues <- 
   c("Fußball-Bundesliga", 
     "La Liga", 
@@ -161,7 +192,7 @@ player_profile_reactive_df <-
               team_name %in% TARGET_PLAYER_TEAM, 
               league_name %in% TARGET_PLAYER_LEAGUE
             ) %>% 
-            select(summary_player, league_name, team_name, season, summary_age) , 
+            select(summary_player, league_name, team_name, season, summary_age, all_positions) , 
           target_df
         )
       
@@ -203,13 +234,24 @@ player_profile_reactive_df <-
                   # remove all data for a target player
                 summary_player != TARGET_PLAYER 
               ) %>% 
-              select(summary_player, league_name, team_name, season, summary_age) , 
+              select(summary_player, league_name, team_name, season, summary_age, all_positions) , 
             comp_df
           )
         
+        increment_value <- function(x) {
+          value <- as.integer(gsub("\\D", "", x))
+          incremented_value <- value + 3  # Increase the value by 3
+          gsub("\\d+", incremented_value, x)
+        }
+        
         target_df <- 
           rbind(target_df, 
-                comp_df)
+                comp_df) %>% 
+          mutate(
+            comb_positions =  gsub("(\\w)\\((\\d+)\\)", "\\1 ( \\2 )", all_positions)
+
+
+          )
     }else{
       
       
@@ -253,6 +295,9 @@ player_profile_reactive_df <-
         ) %>% select(-home_league) %>% unique()
       
       # get a row of data for the player we want to summarize and compare with others 
+      
+
+      
       RAW_DATA %>% 
         filter(
           summary_player %in% TARGET_PLAYER, 
@@ -262,26 +307,28 @@ player_profile_reactive_df <-
         select(-all_of(remove_colnames_keep_games_mins)) %>% 
         colSums() %>% 
         t() %>% 
-        data.frame()  -> target_df
+        data.frame() -> target_df
       
-      target_df <- 
-        cbind(
-          
+      target_df <- cbind(target_df, 
           RAW_DATA %>% 
             filter(
-              summary_player %in% TARGET_PLAYER, 
-              season %in% TARGET_PLAYER_SEASON, 
+              summary_player %in% TARGET_PLAYER & 
+              season %in% TARGET_PLAYER_SEASON & 
               team_name %in% TARGET_PLAYER_TEAM
-            ) %>% 
-            select(summary_player, team_name, season) %>% 
-            unique(), 
-          target_df
-        )%>% 
+            )  %>% select(summary_player, season, team_name, all_positions) %>% 
+            group_by(summary_player, team_name, season) %>% 
+            mutate(
+              comb_positions = combine_strings(all_positions)
+            )  %>% select(comb_positions) %>% unique()
+            )
+      
+      target_df <- 
+        target_df %>% 
         
         left_join(
           player_leagues,
           by = c("summary_player", "team_name", "season")
-        ) %>% select(summary_player,	season,	team_name, league_name, everything())
+        ) %>% select(summary_player,	season,	team_name, league_name, comb_positions, everything())
       
       # other players data in the comparison pool 
       
@@ -291,7 +338,7 @@ player_profile_reactive_df <-
           summary_player %in% players &
           grepl(
                paste(COMP_POSITIONS, collapse = "|"),
-               all_positions) &
+               dominant_position) &
           summary_age >= COMP_AGE_START  &
           summary_age <= COMP_AGE_END &
           
@@ -312,27 +359,106 @@ player_profile_reactive_df <-
         data.frame() %>% 
         
         left_join(
+          
+          RAW_DATA %>% 
+            filter(
+              season %in% COMP_SEASONS &
+              summary_player %in% players &
+              grepl(
+                   paste(COMP_POSITIONS, collapse = "|"),
+                   dominant_position) &
+              summary_age >= COMP_AGE_START  &
+              summary_age <= COMP_AGE_END &
+              
+              summary_min >= COMP_MINUTES_START &
+              summary_min <= COMP_MINUTES_END &
+                          
+                      # remove all data for a target player
+                    summary_player != TARGET_PLAYER 
+            ) %>%
+            
+            group_by(summary_player, team_name, season) %>% 
+            mutate(
+              comb_positions = combine_strings(all_positions)
+            )  %>%  select(summary_player, team_name, season, comb_positions) %>% unique(), 
+          
+          by = c('summary_player', 'team_name', 'season')
+          
+        ) %>% 
+        
+        left_join(
           player_leagues,
           by = c("summary_player", "team_name", "season")
         ) %>% 
-        select(summary_player,	season,	team_name, league_name, everything())  -> comp_df
+        select(summary_player,	season,	team_name, league_name, comb_positions, everything())-> comp_df
         
       target_df <- rbind(target_df, comp_df) 
       
     }
     
-      target_df <- 
-        target_df %>% 
-        left_join(
-          RAW_DATA %>% select(
-            summary_player, league_name, team_name,season, all_positions, dominant_position
-          ) , 
-          by = c('summary_player', 'league_name', 'team_name','season')
-        ) %>% 
-        select(summary_player, league_name, team_name,season, all_positions, dominant_position, everything())
-      
     return(target_df)
     
+  }
+
+create_field_plot <- 
+  function(
+    REACTIVE_DATA, 
+    TARGET_PLAYER
+  ){
+    
+    REACTIVE_DATA %>% 
+      filter(summary_player == TARGET_PLAYER) %>% 
+      select(comb_positions) %>% unlist() -> player_string
+    
+    player_data <- str_match_all(player_string, "([A-Z]+) \\( ([0-9]+) \\)")[[1]][, 2:3]
+
+    # Create a data frame
+    player_df <- data.frame(var1 = player_data[, 1], var2 = as.integer(player_data[, 2]))
+    # 
+    I = ""
+    if("WB" %in% player_df$var1){
+      player_df %>% filter(var1!= "WB") %>% mutate(RBC = substr(var1, 1, 1)) %>% filter(RBC %in% c("R", "L") ) %>%
+        group_by(RBC) %>% summarize(s = sum(var2)) %>% arrange(-s) %>% head(1) %>% select(RBC) %>% unlist() -> I
+    }
+
+    ### create data frame with all positions and their coordinates on the map 
+    
+    position_coords =
+      data.frame(
+        var1 = c(
+          "GK","AM","CB","CM","DF","DM","FW","LB","LM","LW","MF","RB","RM","RW","WB"
+        ),
+
+        coord1 = c(10,70,25,55,25,35,85,25,60,85,55,25, 60,90, 45),
+        coord2 = c(50,50,35,40,65,50,55,85,80,90,60,15, 20, 15,90)
+      ) %>%
+
+      inner_join(
+        player_df,
+        by = "var1"
+      ) %>%
+      mutate(
+        coord2 = case_when(
+          I == "R" & var1 == "WB" ~ 10,
+          T ~ coord2
+        ),
+        label = paste0(var1, " (", var2, ")")
+          )
+    
+    position_coords
+
+  ggplot(data = position_coords,
+       aes(x = coord1, y = coord2, label = label)) +
+
+      annotate_pitch(colour = "#999e9b", alpha = 0.5) +
+      theme_pitch(aspect_ratio = NULL) +
+      geom_point(color = "white") +
+      geom_text(size=4) +
+      theme(title = element_text(size = 20)) +
+      theme(text = element_text(size = 10)) +
+      ggtitle(
+        "Featured Positions"
+      )
   }
 
 percentile_data_frame_one_player <- 
@@ -850,50 +976,57 @@ server_side <-
             )
         )
       
-      percentile_data_frame_one_player_df <- 
-        reactive(
-          percentile_data_frame_one_player(
-            DATA = reactive_player_summary_df(), 
-            PLAYER = input$player_typed_name, 
-            TEAM = input$select_team_same_name
-          ))
-    
-      output$all_features_ranked <- 
-        renderDataTable(
-          all_features_ranked(
-            REACTIVE_DATA =  percentile_data_frame_one_player_df()
-            )
-          )
-      output$dynamic_table_summary <- 
-        renderTable({
-          dynamic_table_summary(
-            REACTIVE_DATA =  percentile_data_frame_one_player_df(), 
-            COLUMNS = input$feature
-            )}, 
-          striped = T
-          )
-      
-      output$like_pizza_but_bar_graph <- 
-        renderPlotly(
-          like_pizza_but_bar_graph(
-            COLUMNS = input$feature, 
-            REACTIVE_DATA = percentile_data_frame_one_player_df()  
-          )
-      )
-      
-      output$all_features_quantiles_histogram <- 
-        renderPlotly(
-          all_features_quantiles_histogram(
-            REACTIVE_DATA = percentile_data_frame_one_player_df()
-          )        
+      output$create_field_plot <- 
+        renderPlot(
+          create_field_plot(
+            REACTIVE_DATA = reactive_player_summary_df(),
+            TARGET_PLAYER = input$player_typed_name)
         )
-      
-      output$all_quantiles_summary <- 
-        renderTable(
-          all_quantiles_summary(
-            REACTIVE_DATA = percentile_data_frame_one_player_df()
-          )        
-        )
+      # 
+      # percentile_data_frame_one_player_df <- 
+      #   reactive(
+      #     percentile_data_frame_one_player(
+      #       DATA = reactive_player_summary_df(), 
+      #       PLAYER = input$player_typed_name, 
+      #       TEAM = input$select_team_same_name
+      #     ))
+      # 
+      # output$all_features_ranked <- 
+      #   renderDataTable(
+      #     all_features_ranked(
+      #       REACTIVE_DATA =  percentile_data_frame_one_player_df()
+      #       )
+      #     )
+      # output$dynamic_table_summary <- 
+      #   renderTable({
+      #     dynamic_table_summary(
+      #       REACTIVE_DATA =  percentile_data_frame_one_player_df(), 
+      #       COLUMNS = input$feature
+      #       )}, 
+      #     striped = T
+      #     )
+      # 
+      # output$like_pizza_but_bar_graph <- 
+      #   renderPlotly(
+      #     like_pizza_but_bar_graph(
+      #       COLUMNS = input$feature, 
+      #       REACTIVE_DATA = percentile_data_frame_one_player_df()  
+      #     )
+      # )
+      # 
+      # output$all_features_quantiles_histogram <- 
+      #   renderPlotly(
+      #     all_features_quantiles_histogram(
+      #       REACTIVE_DATA = percentile_data_frame_one_player_df()
+      #     )        
+      #   )
+      # 
+      # output$all_quantiles_summary <- 
+      #   renderTable(
+      #     all_quantiles_summary(
+      #       REACTIVE_DATA = percentile_data_frame_one_player_df()
+      #     )        
+      #   )
       
       ##### data frame
   }
@@ -1178,58 +1311,10 @@ body <-
                          )),
                 
                 tabPanel(title = "Player Profile", 
-                         fluidPage(
-                           column(width = 4, 
-                                  fluidRow(
-                                    box(width = 12, 
-                                        dataTableOutput('all_features_ranked'))
-                                  )), 
-                           
-                           column(width = 8, 
-                                  
-                                  fluidRow(
-                                    box(width = 12, 
-                                      column(width = 7, plotlyOutput('all_features_quantiles_histogram')), 
-                                      column(width = 5, tableOutput('all_quantiles_summary'))
-                                    )
-                                  ),
-                                  
-                                  fluidRow(
-                                  box(  
-                                    column(width = 6, 
-                                           
-                                            plotlyOutput('like_pizza_but_bar_graph'), 
-                                           
-                                              selectInput(
-                                                 inputId="feature", 
-                                                 selected = c(
-                                                              'Goals'
-                                                              ,'Expected Goals'
-                                                              ,'Passes Completed'
-                                                              ,'Total Passing Distance'
-                                                              ,'Number of players tackled'	
-                                                              ,'Dribbles Challenged'
-                                                              ,'Progressive Carries'	
-                                                              ,'Miscontrols'
-                                                              ),
-                                                  label="Choose Variables for Table",
-                                                 choices=  
-                                                   setdiff( # remove some columns from options here 
-                                                     data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(), 
-                                                     remove_colnames_dict
-                                                   ),
-                                                 multiple=TRUE)
-                                        
-                                    ), 
-                                    column(
-                                      width = 6,
-                                      tableOutput('dynamic_table_summary') 
-                                    ), 
-                                    width = 12)
-                                  )
-                                  
-                                  )
-                         )
+                         
+                           print("Hello"), 
+                           box(plotOutput('create_field_plot'), width = 12) 
+                         
                          ),
                 
                 tabPanel(title = "Similar Players", 

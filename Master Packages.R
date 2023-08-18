@@ -5,6 +5,7 @@ library(devtools)
 library(curl)
 library(tidyverse)
 library(plotly)
+library(ggsoccer)
 
 library(rvest) # two packages for easy interface with the scraped data 
 library(xml2)
@@ -19,6 +20,7 @@ library(shinythemes)
 library(shiny)
 library(shinydashboard)
 library(shinyjs)
+library(shinyBS)
 library(DT)
 
 library(feather)
