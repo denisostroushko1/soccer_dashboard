@@ -44,7 +44,7 @@ jobs:
               any::shinydashboard
               any::shinyjs
               any::DT
-              any::feather
+              feather@0.3.4
               any::secret
               rsconnect@1.0.1
               any::stringr
