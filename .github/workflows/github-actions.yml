@@ -36,7 +36,7 @@ jobs:
               any::rvest
               any::xml2
               any::worldfootballR
-              aws.s3@0.3.2
+              aws.s3@0.3.20
               any::rlang
               any::data.table
               any::shinythemes
