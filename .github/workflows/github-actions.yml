@@ -52,7 +52,7 @@ jobs:
               knitr@1.40
               any::ggsoccer
               any::curl
-              shinyBS@0.61.0
+              shinyBS@0.61.1
               any::shinycssloaders
               any::flexdashboard
                
