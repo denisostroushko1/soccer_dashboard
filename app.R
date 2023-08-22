@@ -651,7 +651,14 @@ similar_players_euclid_dist_data <-
     FEATURES_LIST, 
     COMP_LEAGUES
   ){
-    
+       DATA = dash_df
+          REACTIVE_DATA = percentiles_data()
+          PLAYER = input$player_typed_name
+          TEAM = input$select_team_same_name 
+          SEASON = input$select_season
+          MINUTES_FILTER = input$minutes_to_limit
+          FEATURES_LIST = best_player_features_vec() 
+          COMP_LEAGUES = input$comp_leagues
   
     df <- DATA[league_name %in% COMP_LEAGUES & season %in% SEASON & summary_min >= MINUTES_FILTER & 
                  !team_name %in% TEAM] %>% 

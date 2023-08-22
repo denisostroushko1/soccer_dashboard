@@ -60,7 +60,7 @@
 "59","defensive_challenges_lost","From Table","Challenges Lost","Number of unsucessful attempts to challenge a dribbling player","Defensive"
 "60","defensive_blocks_blocks","From Table","Blocks","Number of times blocking the ball by standing in its path","Defensive"
 "61","defensive_blocks_sh","From Table","Shots Blocked","","Defensive"
-"62","defensive_blocks_pass","From Table","Passes Blocked","","Defensive"
+"62","defensive_blocks_pass","From Table","Defensive Pass Blocked","","Defensive"
 "63","defensive_int","From Table","Interceptions","","Defensive"
 "64","defensive_clr","From Table","Clearances","","Defensive"
 "65","defensive_err","From Table","Errors","Mistakes leading to an opponent's shot","Defensive"

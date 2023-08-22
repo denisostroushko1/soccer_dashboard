@@ -588,6 +588,7 @@ all_features_ranked <-
     
     f %>% 
       select(
+            Data.Frame.Name, 
             stat_cat, 
             descr, 
             player_stat, 
@@ -597,9 +598,23 @@ all_features_ranked <-
       
 #    colnames(f) <- c("Descr", "st", "p_st", "st_90", "p_st_90")
     
-    colnames(f) <- c("Stat. Category","Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile per 90")
+    colnames(f) <- c(
+      "names", "Stat. Category","Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile per 90")
     
     return(f)
+  }
+
+
+player_best_features_vector <- 
+  function(
+    REACTIVE_DATA, 
+    N_FEATURES){
+    
+    REACTIVE_DATA %>% 
+      arrange(-`Percentile per 90`) %>% 
+      head(N_FEATURES) %>% 
+      select(names) %>% unlist()
+    
   }
 
 average_quantiles_data <- 
@@ -613,7 +628,8 @@ average_quantiles_data <-
         ) %>% 
         summarize(
           mean = mean(`Percentile per 90`), 
-          sd = sd(`Percentile per 90`)
+          sd = sd(`Percentile per 90`), 
+          n = n()
         ) 
     )
   }
@@ -639,7 +655,7 @@ create_gauge <-
     color <- gradient_colors[color_index]
     
     m <- paste0(
-      "Average Quantile of\n",CATEGORY, " Varaibles. \nSpread: ",spread
+     CATEGORY, "\nSpread: ",spread
     )
     
     gauge(
@@ -767,6 +783,106 @@ player_season_summary <-
     return(out)
   }
 
+radar_quantiles_chart <- 
+  function(
+    REACTIVE_DATA
+  ){
+    with(REACTIVE_DATA, 
+           
+      REACTIVE_DATA %>% 
+        
+        mutate(
+          short_descr = 
+            case_when(
+              `Stat. Category` == "Attacking" ~ "A", 
+              `Stat. Category` == "Passing" ~ "P",
+              `Stat. Category` == "Pass Type Detail" ~ "P.T.",
+              `Stat. Category` == "On The Ball" ~ "OB",
+              `Stat. Category` == "Misc" ~ "M",
+              `Stat. Category` == "Defensive" ~ "D"
+            ), 
+          
+          se = sd / sqrt(n)
+        ) %>% 
+        
+        plot_ly(
+          type = "scatterpolar", 
+          mode = "markers", 
+          fill = 'toself', 
+          fillcolor = "#64ed9b",
+          
+          r = ~mean, 
+          theta = ~short_descr, 
+          
+          text = paste0(
+            "Category: ", `Stat. Category`, 
+            "<br>Average Quantile: ", round(mean, 2), 
+            "<br>Standard Deviation: ", round(sd, 2)
+          ), 
+          hoverinfo = 'text', 
+          
+          opacity = 0.5,
+          
+          marker = list(size = 10, color = "black"), 
+          
+          name = " "
+          
+        ) %>% 
+        layout(
+          polar = list(
+            radialaxis = list(
+              visible = T,
+              range = c(0,1)
+            )
+          ),
+          margin = list(l = 25, r = 25, t = 50, b = 25), 
+          title = "Average Quantiles"
+        )
+      
+    )
+  }
+
+bar_plot_ranked_features <- 
+  function(
+    REACTIVE_DATA, 
+    FEATURES_TO_SHOW){
+    
+    
+         REACTIVE_DATA %>% 
+           arrange(
+             -`Percentile per 90`
+           ) %>% 
+      
+          head(FEATURES_TO_SHOW) -> plot_df 
+    
+          plot_df$`Stat. Name` <- factor(plot_df$`Stat. Name`, levels = plot_df$`Stat. Name`)
+          
+          plot_df %>% 
+           plot_ly() %>% 
+            add_trace(
+              y = ~`Percentile per 90`, 
+              x = ~`Stat. Name`, 
+              color = ~`Stat. Category`, 
+              
+              type = 'bar', 
+              
+              text = paste0(
+                "Statistic: ", plot_df$`Stat. Name`, 
+                "<br>Aggregate: ", plot_df$`Aggregate Per Season` ,
+                "<br>Per 90: ", plot_df$`Scaled Per 90 Minutes` %>% round(.,2),
+                "<br>Quantile per 90: ", plot_df$`Percentile per 90` %>% round(.,2)
+              ), 
+              
+              hoverinfo = 'text'
+            ) %>% 
+           
+           layout(xaxis = list(title = ""), 
+                  yaxis = list(title = ""), 
+                  legend = list(orientation = "h", x = 0, y = 1.2),
+                  margin = list(l = 25, r = 25, t = 50, b = 25))
+         
+    
+  }
 
 dynamic_table_summary <- 
   function(
@@ -986,7 +1102,277 @@ all_quantiles_summary <-
   }
 
 #### player profile -- similar players 
+similar_players_euclid_dist_data <- 
+  function(
+    REACTIVE_DATA, 
+    TARGET_PLAYER, 
+    TARGET_PLAYER_TEAM, 
+    SEASON, 
+    FEATURES_LIST
+  ){
+    
+    df <- 
+      rbind(
+        REACTIVE_DATA %>% ungroup() %>% filter(summary_player %in% TARGET_PLAYER & team_name == TARGET_PLAYER_TEAM),
+        REACTIVE_DATA %>% filter(team_name != TARGET_PLAYER_TEAM)
+      ) %>% 
+    
+    select(all_of(
+        c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', "league_name")
+      ))
+  
+    colnames(df) <- c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', "league_name")
+    
+    minutes <- df$summary_min
+    
+    # df_per_90 <- df %>% select(all_of(
+    #       c(FEATURES_LIST)))
 
+    df_per_90 <- df %>%
+      mutate_at(
+        vars(all_of(c(FEATURES_LIST))), ~ . / summary_min * 90)
+    
+    df_per_90 %>% 
+      select(all_of(FEATURES_LIST)) %>% 
+      summarise(
+        across(everything(), ~ mean(., na.rm = T))
+      )  -> means 
+    
+    df_per_90 %>% 
+      select(all_of(FEATURES_LIST)) %>% 
+      summarise(
+        across(everything(), ~ sd(., na.rm = T))
+      )  %>% t()  -> sds
+    
+    df_per_90 <- 
+      df_per_90 %>% 
+      mutate_at(
+        #across(all_of(c(FEATURES_LIST)), 
+              vars(all_of(c(FEATURES_LIST))), 
+               ~(. - mean(.))/sd(.)
+               )
+      
+    df_per_90 <- na.omit(df_per_90)
+    
+    points <- df_per_90 %>% filter(summary_player %in% TARGET_PLAYER & team_name %in% TARGET_PLAYER_TEAM) %>%
+     select(all_of(FEATURES_LIST)) %>%
+     setNames(FEATURES_LIST) %>% unlist()
+
+    df_per_902 <-
+       df_per_90 %>%
+        select(all_of(FEATURES_LIST)) %>%
+        setNames(FEATURES_LIST) %>%
+        mutate(across(everything(), ~ (. - points[match(cur_column(), names(points))])^2
+                      )
+               )
+
+    dist = sqrt(rowSums(df_per_902))
+
+    md <- max(dist)
+
+    distance_data =
+      cbind(df, dist) %>%
+      mutate(scaled_dist = dist / md)
+
+    return(distance_data)
+  }
+
+pca_results <- 
+  function(
+    REACTIVE_DATA, 
+    TARGET_PLAYER, 
+    TARGET_PLAYER_TEAM, 
+    SEASON, 
+    FEATURES_LIST
+  ){
+    
+    df <- REACTIVE_DATA %>% filter(  !team_name %in% TARGET_PLAYER_TEAM | 
+                                       (summary_player == TARGET_PLAYER & 
+                                          team_name == TARGET_PLAYER_TEAM)) %>% as.data.table() %>% 
+    
+    select(all_of(
+        c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', "league_name")
+      ))
+  
+    colnames(df) <- c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', "league_name")
+    
+    minutes <- df$summary_min
+    
+    # df_per_90 <- df %>% select(all_of(
+    #       c(FEATURES_LIST)))
+
+    df_per_90 <- df %>%
+      mutate_at(
+        vars(all_of(c(FEATURES_LIST))), ~ . / summary_min * 90)
+    
+    df_per_90 <- na.omit(df_per_90)
+      
+      set.seed(1)
+      pca_res <- prcomp(df_per_90 %>% select(all_of(FEATURES_LIST)), scale = T)
+      
+      return(pca_res)
+  }
+           
+pca_results_data <- 
+  function(
+    REACTIVE_DATA, 
+    TARGET_PLAYER, 
+    TARGET_PLAYER_TEAM, 
+    SEASON, 
+    FEATURES_LIST
+  ){
+    
+    df <- REACTIVE_DATA %>% filter(  (!team_name %in% TARGET_PLAYER_TEAM) | 
+                                       (summary_player %in% TARGET_PLAYER & 
+                                          team_name %in% TARGET_PLAYER_TEAM)) %>% 
+    
+    select(all_of(
+        c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', "league_name")
+      ))
+  
+    colnames(df) <- c(FEATURES_LIST, "summary_player", "summary_min", 'team_name', "league_name")
+    
+    minutes <- df$summary_min
+    
+    # df_per_90 <- df %>% select(all_of(
+    #       c(FEATURES_LIST)))
+
+    df_per_90 <- df %>%
+      mutate_at(
+        vars(all_of(c(FEATURES_LIST))), ~ . / summary_min * 90)
+    
+    df_per_90 <- na.omit(df_per_90)
+      
+      set.seed(1)
+      pca_res <- prcomp(df_per_90 %>% select(all_of(FEATURES_LIST)), scale = T)
+      
+      summary(pca_res)$importance %>% t() -> d
+    
+    d <- d[d[,3] < .85, ]
+    d <- data.frame(d)
+    d$pc <- as.character(rownames(d))
+    
+    
+    plot_df <- 
+      cbind(df, 
+            pca_res$x[,c(d$pc)])
+      
+      return(plot_df)
+  }       
+
+similar_pca_table <- 
+  function(
+    PCA_RES
+  ){
+    summary(PCA_RES)$importance %>% t() -> d
+    
+    d <- d[d[,3] < .85, ]
+    
+    d <- data.frame(d)
+    
+    d$pc <- as.character(rownames(d))
+    
+    d <- d[,-1]
+    
+    d[,1 ] <- paste0(round(d[,1], 4) * 100, "%")
+    
+    d[,2 ] <- paste0(round(d[,2], 4) * 100, "%")
+    
+    colnames(d) <- c("Proportion of Variance", "Cumulative", "PC")
+    
+    d <- d %>% select(PC, everything())
+    
+    d
+  }
+
+similar_pca_plot <- 
+  function(
+    REACTIVE_PCA_DF, 
+    PLAYER, 
+    TEAM, 
+    SIMILAR_PLAYERS, 
+    X_AXIS_PC, 
+    Y_AXIS_PC
+  ){
+    
+    
+    selected <- REACTIVE_PCA_DF[(REACTIVE_PCA_DF$summary_player == PLAYER & 
+                                  REACTIVE_PCA_DF$team_name == TEAM), ]
+    
+    similar <- REACTIVE_PCA_DF[REACTIVE_PCA_DF$summary_player %in% SIMILAR_PLAYERS$summary_player & 
+                                 REACTIVE_PCA_DF$team_name %in% SIMILAR_PLAYERS$team_name & 
+                                 !(REACTIVE_PCA_DF$summary_player == PLAYER & 
+                                      REACTIVE_PCA_DF$team_name == TEAM), ]
+    
+    all_play <- REACTIVE_PCA_DF[!(REACTIVE_PCA_DF$summary_player == PLAYER & 
+                                  REACTIVE_PCA_DF$team_name == TEAM) & 
+                                  !(REACTIVE_PCA_DF$summary_player %in% SIMILAR_PLAYERS & 
+                                      REACTIVE_PCA_DF$team_name %in% SIMILAR_PLAYERS$team_name), 
+                                ]
+    
+    
+    
+    plot_ly() %>% 
+      add_trace(
+        data = all_play, 
+        x = ~all_play[[X_AXIS_PC]], 
+        y = ~all_play[[Y_AXIS_PC]], 
+        
+        color = ~league_name, 
+        
+        opacity = .5, 
+        
+        type = "scatter", 
+        mode = "markers", 
+        text = paste(
+          'Name: ', all_play$summary_player, 
+          '<br>League: ', all_play$league_name, 
+          '<br>Team: ', all_play$team_name 
+        ), 
+        hoverinfo = 'text'
+      )  %>% 
+      
+      add_trace(
+        data = similar, 
+        x = ~similar[[X_AXIS_PC]], 
+        y = ~similar[[Y_AXIS_PC]], 
+        
+        name = "Similar Players", 
+        
+        type = "scatter", 
+        mode = "markers", 
+        marker = list(size = 10, color = "red"), 
+        text = paste(
+          'Name: ', similar$summary_player, 
+          '<br>League: ', similar$league_name,
+          '<br>Team: ', similar$team_name 
+        ), 
+        hoverinfo = 'text'
+      ) %>% 
+      
+      add_trace(
+        data = selected, 
+        x = ~selected[[X_AXIS_PC]], 
+        y = ~selected[[Y_AXIS_PC]], 
+        
+        name = PLAYER, 
+        
+        type = "scatter", 
+        mode = "markers", 
+        marker = list(size = 15, color = "purple"), 
+        text = paste(
+          'Name: ', selected$summary_player, 
+          '<br>League: ', selected$league_name, 
+          '<br>Team: ', selected$team_name 
+        ), 
+        hoverinfo = 'text'
+      ) %>% 
+      
+      layout(xaxis = list(title = X_AXIS_PC, zeroline = F), 
+             yaxis = list(title = Y_AXIS_PC, zeroline = F),
+             legend = list(orientation = 'h'))
+      
+  }
                                             ########################
                                             # LOAD UP SERVER SIDE #
                                             ########################
@@ -1066,9 +1452,26 @@ server_side <-
         
         ## sometimes we have two + players with the same name playing on different teams. If we type in such a name, we need to be able to 
         ##  select a team 
+       
+      player_seasons <- 
+        reactive(dash_df[summary_player %in% selected_player_profile_name() ] %>% 
+                 select(season) %>% unique() %>% unlist() %>% 
+                     set_names(NULL))
+    
+      
+      output$picked_player_available_seasons <- 
+            renderUI({
+              
+              selectInput(inputId = 'select_season', 
+                           label = "Select a Season", 
+                           choices = player_seasons(),  
+                           selected = dash_df[dash_df$summary_player == selected_player_profile_name()]$season %>% tail(1) %>% unlist()
+                          )
+          })
     
       same_name_teams <- 
-        reactive(dash_df[summary_player %in% selected_player_profile_name() ] %>% 
+        reactive(dash_df[summary_player %in% selected_player_profile_name() & 
+                           season == input$select_season ] %>% 
                  select(team_name) %>% unique() %>% unlist() %>% sort() %>% 
                      set_names(NULL))
     
@@ -1084,7 +1487,8 @@ server_side <-
      
     
       same_name_leagues <- 
-        reactive(dash_df[summary_player %in% selected_player_profile_name() ] %>% 
+        reactive(dash_df[summary_player %in% selected_player_profile_name() & 
+                           season == input$select_season] %>% 
                  select(league_name) %>% unique() %>% unlist() %>% sort() %>% 
                      set_names(NULL))
     
@@ -1095,22 +1499,6 @@ server_side <-
                            label = "Select Competiton", 
                            choices = same_name_leagues(), 
                            selected = dash_df[dash_df$summary_player == selected_player_profile_name()][1,]$league_name
-                          )
-          })
-       
-      player_seasons <- 
-        reactive(dash_df[summary_player %in% selected_player_profile_name() ] %>% 
-                 select(season) %>% unique() %>% unlist() %>% 
-                     set_names(NULL))
-    
-      
-      output$picked_player_available_seasons <- 
-            renderUI({
-              
-              selectInput(inputId = 'select_season', 
-                           label = "Select a Season", 
-                           choices = player_seasons(),  
-                           selected = dash_df[dash_df$summary_player == selected_player_profile_name()][1,]$season
                           )
           })
       
@@ -1292,7 +1680,124 @@ server_side <-
           )
         )
       
+      output$radar_quantiles_chart <- 
+        renderPlotly(
+          radar_quantiles_chart(
+            REACTIVE_DATA = average_quantiles_data_df()
+          )
+        )
       
+      output$bar_plot_ranked_features <- 
+        renderPlotly(
+          bar_plot_ranked_features(
+            REACTIVE_DATA = all_features_ranked_w_names(), 
+            FEATURES_TO_SHOW = input$show_features_plotly)
+        )
+      
+      ########## 
+      # similar player stuff 
+      
+      best_features_vector <- 
+        reactive(
+          player_best_features_vector(
+            REACTIVE_DATA = all_features_ranked_w_names(), 
+            N_FEATURES = input$top_features_used
+          )
+        )
+      
+      similar_players_euclid_dist_data_df <- 
+        reactive(
+          similar_players_euclid_dist_data(
+            REACTIVE_DATA = reactive_player_summary_df(), 
+            TARGET_PLAYER = input$player_typed_name, 
+            TARGET_PLAYER_TEAM = input$select_team_same_name, 
+            SEASON = input$select_season, 
+            FEATURES_LIST = best_features_vector()
+          )
+        )
+      
+      data_from_pca <- 
+        reactive(
+          pca_results_data(
+            REACTIVE_DATA = reactive_player_summary_df(), 
+            TARGET_PLAYER = input$player_typed_name, 
+            TARGET_PLAYER_TEAM = input$select_team_same_name, 
+            SEASON = input$select_season, 
+            FEATURES_LIST = best_features_vector()
+          )
+        )
+      
+      pca_res <- 
+        reactive(
+          pca_results(
+            REACTIVE_DATA = reactive_player_summary_df(), 
+            TARGET_PLAYER = input$player_typed_name, 
+            TARGET_PLAYER_TEAM = input$select_team_same_name, 
+            SEASON = input$select_season, 
+            FEATURES_LIST = best_features_vector()
+          )
+        )
+      
+       output$pc_pick_1 <- 
+            renderUI({
+              
+              selectInput(inputId = 'select_pc_plot_1', 
+                           label = "Pick a PC for X-axis", 
+                           choices = colnames(data_from_pca())[grep("PC", colnames(data_from_pca()))], 
+                           selected = colnames(data_from_pca())[grep("PC", colnames(data_from_pca()))][1])
+          })
+    
+       output$pc_pick_2 <- 
+            renderUI({
+              
+              selectInput(inputId = 'select_pc_plot_2', 
+                           label = "Pick a PC for Y-axis", 
+                           choices = colnames(data_from_pca())[grep("PC", colnames(data_from_pca()))], 
+                           selected = colnames(data_from_pca())[grep("PC", colnames(data_from_pca()))][2])
+          })
+      
+      output$test_table_g <- 
+        renderDataTable({
+          
+          similar_players_euclid_dist_data_df()  %>%
+            arrange(scaled_dist) %>% 
+            head(input$target_sim_players)  %>% 
+            datatable(options = list(scrollX = T))
+          
+        })
+      
+      simialr_players_df <- 
+        reactive(
+          similar_players_euclid_dist_data_df()  %>% 
+            arrange(scaled_dist) %>% 
+            head(input$target_sim_players) 
+        )
+      
+      output$similar_pca_plot <-
+        renderPlotly(
+          similar_pca_plot(
+              REACTIVE_PCA_DF = data_from_pca(),
+              PLAYER = input$player_typed_name,
+              TEAM = input$select_team_same_name,
+              SIMILAR_PLAYERS = simialr_players_df(),
+              X_AXIS_PC = input$select_pc_plot_1, 
+              Y_AXIS_PC = input$select_pc_plot_2
+              )
+        )
+      
+    output$league_check <- 
+      renderTable(
+        data_from_pca() %>% 
+          group_by(league_name) %>% summarise(n = n())
+      )
+      
+    output$similar_pca_table <- 
+      renderTable(
+        similar_pca_table(
+          PCA_RES = pca_res()
+        )
+      )
+    
       # output$dynamic_table_summary <- 
       #   renderTable({
       #     dynamic_table_summary(
@@ -1539,10 +2044,10 @@ body <-
                                   textInput(inputId = 'player_typed_name', 
                                          label = "Type in Player Name", 
                                          value = 'Kevin De Bruyne'),
-                                  
-                                    uiOutput('same_name_team_picker'), 
-                                    uiOutput('same_name_leagues_picker'), 
-                                    uiOutput('picked_player_available_seasons'), 
+                                
+                                    uiOutput('picked_player_available_seasons') %>% withSpinner(color="#0dc5c1"), 
+                                    uiOutput('same_name_team_picker') %>% withSpinner(color="#0dc5c1"), 
+                                    uiOutput('same_name_leagues_picker') %>% withSpinner(color="#0dc5c1"), 
                                 
                                     radioButtons(inputId = "league_cup_combine", 
                                                  label = "Combine League and Cups?", 
@@ -1628,42 +2133,50 @@ body <-
                                                 value = 80, 
                                                 step = 1
                                                   
-                                                  ))
+                                                  ), 
+                                    numericInput(inputId = 'show_features_plotly', 
+                                                 label  = "Number of Top Features To Show", 
+                                                 min = 5, 
+                                                 max = 100, 
+                                                 value = 20)
                            ), 
                            fluidRow(
                              column(width = 6, 
-                              box(width = 12, height = "400px",title = "Average Quantiles By Category", 
+                              box(width = 12, title = "Average Quantiles By Category", height = "325px", 
                                 column(gaugeOutput('attacking_gauge',
-                                                  width = "100%", height = "200px") %>% withSpinner(color="#0dc5c1"), 
+                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), 
                                       gaugeOutput('defensive_gauge',
-                                                  width = "100%", height = "200px") %>% withSpinner(color="#0dc5c1"), width = 4), 
+                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), width = 4), 
                                 column(gaugeOutput('ball_gauge',
-                                                  width = "100%", height = "200px") %>% withSpinner(color="#0dc5c1"), 
+                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), 
                                       gaugeOutput('pass_type_gauge',
-                                                  width = "100%", height = "200px") %>% withSpinner(color="#0dc5c1"), width = 4), 
+                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), width = 4), 
                                 column(gaugeOutput('Passing_type_gauge',
-                                                  width = "100%", height = "200px") %>% withSpinner(color="#0dc5c1"), 
+                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), 
                                       gaugeOutput('misc_gauge',
-                                                  width = "100%", height = "200px") %>% withSpinner(color="#0dc5c1"), width = 4)
+                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), width = 4)
                            )
                           ),
                            column(width = 6,
-                            box(width = 12, height = "400px",title = "Number of Quantiles By Anove Threshold", 
+                            box(width = 12, title = "Number of Quantiles By Anove Threshold", height = "325px", 
                                 column(gaugeOutput('attacking_gauge_slider',
-                                                  width = "100%", height = "200px") %>% withSpinner(color="#0dc5c1"), 
+                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), 
                                       gaugeOutput('defensive_gauge_slider',
-                                                  width = "100%", height = "200px") %>% withSpinner(color="#0dc5c1"), width = 4), 
+                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), width = 4), 
                                 column(gaugeOutput('ball_gauge_slider',
-                                                  width = "100%", height = "200px") %>% withSpinner(color="#0dc5c1"), 
+                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), 
                                       gaugeOutput('pass_type_gauge_slider',
-                                                  width = "100%", height = "200px") %>% withSpinner(color="#0dc5c1"), width = 4), 
+                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), width = 4), 
                                 column(gaugeOutput('Passing_type_gauge_slider',
-                                                  width = "100%", height = "200px") %>% withSpinner(color="#0dc5c1"), 
+                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), 
                                       gaugeOutput('misc_gauge_slider',
-                                                  width = "100%", height = "200px") %>% withSpinner(color="#0dc5c1"), width = 4)
+                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), width = 4)
                            )
                            )
-                )
+                ), 
+                fluidRow(
+                          plotlyOutput('radar_quantiles_chart') %>% withSpinner(color="#0dc5c1")), 
+                          plotlyOutput('bar_plot_ranked_features') %>% withSpinner(color="#0dc5c1"))
                 )
                 ), 
                 
@@ -1672,19 +2185,45 @@ body <-
                            tabPanel("Best Features Based", 
                                     fluidPage(
                                       column(width = 3,
-                                             box(numericInput(inputId = 'target_sim_players', 
+                                             numericInput(inputId = 'target_sim_players', 
                                                               label = "Number of Similar Players to Find", 
                                                               min = 0, 
                                                               max = 1000, 
                                                               value = 30), 
-                                                 numericInput(inputId = 'top_features_used', 
-                                                              label = "Number of Features to Use", 
-                                                              min = 0, 
-                                                              max = 100, 
-                                                              value = 20), 
-                                                     width = 12)
-                     ), 
-                                      column(width = 9)
+                                             numericInput(inputId = 'top_features_used', 
+                                                          label = "Number of Features to Use", 
+                                                          min = 0, 
+                                                          max = 100, 
+                                                          value = 20), 
+                                            
+                                            tableOutput('similar_pca_table'), 
+                                             uiOutput('pc_pick_1') %>% withSpinner(color="#0dc5c1"), 
+                                             uiOutput('pc_pick_2') %>% withSpinner(color="#0dc5c1"), 
+                                            selectInput(inputId="feature", 
+                                                         selected = c(
+                                                                      'Goals'
+                                                                      ,'Expected Goals'
+                                                                      ,'Passes Completed'
+                                                                      ,'Total Passing Distance'
+                                                                      ,'Number of players tackled'	
+                                                                      ,'Dribbles Challenged'
+                                                                      ,'Progressive Carries'	
+                                                                      ,'Miscontrols'
+                                                                      ),
+                                                         label="Choose Variables for Table",
+                                                         choices=  
+                                                           setdiff( # remove some columns from options here 
+                                                             data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(), 
+                                                             remove_colnames_dict
+                                                           ),
+                                                         multiple=TRUE)
+                                             
+                                            ), 
+                                      column(width = 9, 
+                                             dataTableOutput('test_table_g') %>% withSpinner(color="#0dc5c1"), 
+                                             plotlyOutput('similar_pca_plot') %>% withSpinner(color="#0dc5c1"), 
+                                             tableOutput('league_check')
+                                             )
                                     )
                                     ),
                            tabPanel("All Features Based",
