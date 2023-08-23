@@ -35,7 +35,7 @@ jobs:
               plotly@4.10.1
               any::rvest
               any::xml2
-              any::worldfootballR
+              worldfootballR@0.6.1
               aws.s3@0.3.20
               any::rlang
               any::data.table
