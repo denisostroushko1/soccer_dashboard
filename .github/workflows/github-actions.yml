@@ -41,7 +41,7 @@ jobs:
               any::data.table
               any::shinythemes
               any::shiny
-              any::shinydashboard
+              shinydashboard@0.7.1
               any::shinyjs
               any::DT
               feather@0.3.4
