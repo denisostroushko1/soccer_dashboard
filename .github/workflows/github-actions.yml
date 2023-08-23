@@ -32,7 +32,7 @@ jobs:
             packages:
               any::devtools
               any::tidyverse
-              any::plotly
+              plotly@4.10.1
               any::rvest
               any::xml2
               any::worldfootballR
