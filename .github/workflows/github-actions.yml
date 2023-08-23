@@ -43,7 +43,7 @@ jobs:
               any::shiny
               shinydashboard@0.7.1
               shinyjs@2.0.0
-              any::DT
+              DT@0.27
               feather@0.3.4
               any::secret
               rsconnect@1.0.1
