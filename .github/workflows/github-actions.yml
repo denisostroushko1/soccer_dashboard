@@ -39,7 +39,7 @@ jobs:
               aws.s3@0.3.20
               any::rlang
               any::data.table
-              any::shinythemes
+              shinythemes@1.1.2
               any::shiny
               shinydashboard@0.7.1
               shinyjs@2.0.0
