@@ -30,7 +30,7 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
             packages:
-              any::devtools
+              devtools@2.4.4
               any::tidyverse
               plotly@4.10.1
               any::rvest
