@@ -1512,7 +1512,7 @@ server_side <-
                        selected = 
                         strsplit(
                               gsub("[0-9()]", "", 
-                                   dash_df[summary_player == selected_player_profile_name()  ]$all_positions %>% unlist()), 
+                                   dash_df[summary_player == selected_player_profile_name()  ]$all_positions %>% unlist() %>% sort()), 
                               ", ")[[1]], 
                       multiple = T
                         )

@@ -42,7 +42,7 @@ jobs:
               any::shinythemes
               any::shiny
               shinydashboard@0.7.1
-              any::shinyjs
+              shinyjs@2.0.0
               any::DT
               feather@0.3.4
               any::secret
