@@ -54,7 +54,7 @@ jobs:
               any::curl
               shinyBS@0.20
               shinycssloaders@0.3
-              any::flexdashboard
+              flexdashboard@0.6.1
                
       - name: Execute R Script
         env:
