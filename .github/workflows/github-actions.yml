@@ -31,7 +31,7 @@ jobs:
         with:
             packages:
               devtools@2.4.4
-              any::tidyverse
+              tidyverse@1.3.2
               plotly@4.10.1
               any::rvest
               any::xml2
