@@ -53,7 +53,7 @@ jobs:
               any::ggsoccer
               any::curl
               shinyBS@0.20
-              any::shinycssloaders
+              shinycssloaders@0.3
               any::flexdashboard
                
       - name: Execute R Script
