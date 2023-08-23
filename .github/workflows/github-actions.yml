@@ -50,7 +50,7 @@ jobs:
               any::stringr
               any::kableExtra
               knitr@1.40
-              any::ggsoccer
+              ggsoccer@0.1.6
               any::curl
               shinyBS@0.20
               shinycssloaders@0.3
