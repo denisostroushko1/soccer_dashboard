@@ -258,12 +258,15 @@ player_profile_reactive_df <-
       
       player_leagues <- 
         RAW_DATA %>% 
-          filter(season %in% COMP_SEASONS | (season == TARGET_PLAYER_SEASON & summary_player == TARGET_PLAYER)) %>% 
+          filter((season %in% COMP_SEASONS & league_name %in% COMP_LEAGUES) | 
+                   (season == TARGET_PLAYER_SEASON & summary_player == TARGET_PLAYER) 
+                 ) %>% 
           select(summary_player, season, team_name, league_name) %>% unique() 
       
       home_leagues <- 
         RAW_DATA %>% 
-          filter((season %in% COMP_SEASONS | (season == TARGET_PLAYER_SEASON & summary_player == TARGET_PLAYER)) & 
+          filter(((season %in% COMP_SEASONS & league_name %in% COMP_LEAGUES)  | 
+                    (season == TARGET_PLAYER_SEASON & summary_player == TARGET_PLAYER)) & 
                    !(league_name %in% c(
                      "UEFA Champions League", 
                      "Copa Libertadores de América", 
@@ -334,6 +337,7 @@ player_profile_reactive_df <-
       RAW_DATA %>% 
         filter(
           season %in% COMP_SEASONS &
+          league_name %in% COMP_LEAGUES & 
           summary_player %in% players &
           grepl(
                paste(COMP_POSITIONS, collapse = "|"),
