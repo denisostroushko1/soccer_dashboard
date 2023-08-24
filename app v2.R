@@ -475,7 +475,8 @@ create_field_plot <-
         ),
 
         coord1 = c(10,70,25,55,25,35,85,25,60,85,55,25, 60,90, 45),
-        coord2 = c(50,50,35,40,65,50,55,85,80,90,60,15, 20, 15,90)
+    #    coord2 = c(50,50,35,40,65,50,55,85,80,90,60,15, 20, 15,90)
+        coord2 = c(50, 50, 65, 60, 35, 50, 45, 15, 20, 10, 40, 85, 85, 85, 10)
       ) %>%
 
       inner_join(
@@ -505,7 +506,8 @@ create_field_plot <-
         paste0(
           TARGET_PLAYER_SEASON, " Featured Positions"
         )
-      )
+      ) + 
+    coord_flip()
   }
 
 percentile_data_frame_one_player <- 
@@ -841,8 +843,8 @@ all_features_quantiles_density <-
       f %>% 
       group_by(stat_cat) %>% 
       summarize(
-        dens_x =  density(percentiles_per_90)$x, 
-        dens_y =  density(percentiles_per_90)$y/ sum(density(percentiles_per_90)$y)
+        dens_x =  density(`Percentile per 90`)$x, 
+        dens_y =  density(`Percentile per 90`)$y/ sum(density(`Percentile per 90`)$y)
       )
   
     with(f_plot, 
@@ -863,8 +865,11 @@ all_features_quantiles_density <-
         hoverinfo = 'text'
         
       ) %>% 
-      layout(xaxis = list(range = c(0, 1), zeroline = F, title = "Percentiles"), 
-             yaxis = list(title = "Approximate Probability"))
+      layout(xaxis = list(range = c(0, 1), zeroline = F, title = "Quantiles"), 
+             margin = list(l = 25, r = 25, t = 50, b = 25), 
+             legend = list(orientation = "h", y = -0.25), 
+             yaxis = list(title = "Approximate Probability"), 
+             title = "Detailed Quantile Distribtuion")
     )
 
     
@@ -1543,9 +1548,7 @@ server_side <-
                                          scrollY = TRUE
                                          ), 
                           rownames = F)
-            }, 
-            striped = TRUE, 
-            hover = TRUE)
+            })
           
       ########## PLAYER PROFILE SUMMARY PAGE 
       
@@ -1616,55 +1619,55 @@ server_side <-
             REACTIVE_DATA = all_features_ranked_w_names()
           )
         )
-      
-      output$attacking_gauge <- 
-        renderGauge(
-          create_gauge(
-            REACTIVE_DATA = average_quantiles_data_df(), 
-            CATEGORY = "Attacking"
-          )
-        )
-      
-      output$defensive_gauge <- 
-        renderGauge(
-          create_gauge(
-            REACTIVE_DATA = average_quantiles_data_df(), 
-            CATEGORY = "Defensive"
-          )
-        )
-      
-      output$misc_gauge <- 
-        renderGauge(
-          create_gauge(
-            REACTIVE_DATA = average_quantiles_data_df(), 
-            CATEGORY = "Misc"
-          )
-        )
-      
-      output$ball_gauge <- 
-        renderGauge(
-          create_gauge(
-            REACTIVE_DATA = average_quantiles_data_df(), 
-            CATEGORY = "On The Ball"
-          )
-        )
-      
-      output$pass_type_gauge <- 
-        renderGauge(
-          create_gauge(
-            REACTIVE_DATA = average_quantiles_data_df(), 
-            CATEGORY = "Pass Type Detail"
-          )
-        )
-      
-      output$Passing_type_gauge <- 
-        renderGauge(
-          create_gauge(
-            REACTIVE_DATA = average_quantiles_data_df(), 
-            CATEGORY = "Passing"
-          )
-        )
-      
+      # 
+      # output$attacking_gauge <- 
+      #   renderGauge(
+      #     create_gauge(
+      #       REACTIVE_DATA = average_quantiles_data_df(), 
+      #       CATEGORY = "Attacking"
+      #     )
+      #   )
+      # 
+      # output$defensive_gauge <- 
+      #   renderGauge(
+      #     create_gauge(
+      #       REACTIVE_DATA = average_quantiles_data_df(), 
+      #       CATEGORY = "Defensive"
+      #     )
+      #   )
+      # 
+      # output$misc_gauge <- 
+      #   renderGauge(
+      #     create_gauge(
+      #       REACTIVE_DATA = average_quantiles_data_df(), 
+      #       CATEGORY = "Misc"
+      #     )
+      #   )
+      # 
+      # output$ball_gauge <- 
+      #   renderGauge(
+      #     create_gauge(
+      #       REACTIVE_DATA = average_quantiles_data_df(), 
+      #       CATEGORY = "On The Ball"
+      #     )
+      #   )
+      # 
+      # output$pass_type_gauge <- 
+      #   renderGauge(
+      #     create_gauge(
+      #       REACTIVE_DATA = average_quantiles_data_df(), 
+      #       CATEGORY = "Pass Type Detail"
+      #     )
+      #   )
+      # 
+      # output$Passing_type_gauge <- 
+      #   renderGauge(
+      #     create_gauge(
+      #       REACTIVE_DATA = average_quantiles_data_df(), 
+      #       CATEGORY = "Passing"
+      #     )
+      #   )
+      # 
       output$attacking_gauge_slider <- 
         renderGauge(  
           create_gauge_count(
@@ -1843,39 +1846,6 @@ server_side <-
           PCA_RES = pca_res()
         )
       )
-    
-      # output$dynamic_table_summary <- 
-      #   renderTable({
-      #     dynamic_table_summary(
-      #       REACTIVE_DATA =  percentile_data_frame_one_player_df(), 
-      #       COLUMNS = input$feature
-      #       )}, 
-      #     striped = T
-      #     )
-      # 
-      # output$like_pizza_but_bar_graph <- 
-      #   renderPlotly(
-      #     like_pizza_but_bar_graph(
-      #       COLUMNS = input$feature, 
-      #       REACTIVE_DATA = percentile_data_frame_one_player_df()  
-      #     )
-      # )
-      # 
-      # output$all_features_quantiles_histogram <- 
-      #   renderPlotly(
-      #     all_features_quantiles_histogram(
-      #       REACTIVE_DATA = percentile_data_frame_one_player_df()
-      #     )        
-      #   )
-      # 
-      # output$all_quantiles_summary <- 
-      #   renderTable(
-      #     all_quantiles_summary(
-      #       REACTIVE_DATA = percentile_data_frame_one_player_df()
-      #     )        
-      #   )
-      
-      ##### data frame
   }
 
                                             ########################
@@ -2163,78 +2133,75 @@ body <-
                                )
                          )),
                 
-                tabPanel(title = "Player Profile", 
-                         fluidPage(
+                tabPanel(
+                  title = "Player Profile", 
+                          fluidRow(
+                            column(width = 4, 
+                                   uiOutput('rendered_player_header') %>% withSpinner(color="#0dc5c1")
+                                   ), 
+                            column(width = 4, 
+                                   tableOutput('brief_summary_and_pool') %>% withSpinner(color="#0dc5c1")
+                                   )
+                          ), 
                            fluidRow(
-                             column(width = 6, align="center", 
-                                    fluidRow(
-                                      
-                                    uiOutput('rendered_player_header') %>% withSpinner(color="#0dc5c1"), 
-                                    tableOutput('brief_summary_and_pool') %>% withSpinner(color="#0dc5c1"), 
+                             column(width = 4, align="center", 
+                                    
                                     plotOutput('create_field_plot') %>% withSpinner(color="#0dc5c1")
-                                    )
                                     ), 
-                             column(width = 6, 
-                                    tabsetPanel(
-                                      tabPanel("Main", 
-                                               plotlyOutput('radar_quantiles_chart') %>% withSpinner(color="#0dc5c1")
-                                               ), 
-                                      tabPanel("Quantile Distribution", 
-                                               plotlyOutput('all_features_quantiles_density') %>% withSpinner(color="#0dc5c1")
-                                               )
-                                    )
-                                    )
-                           ), 
-                           fluidRow(
-                           fluidRow(
-                             column(width = 6, 
-                              box(width = 12, title = "Average Quantiles By Category", height = "325px", 
-                                column(gaugeOutput('attacking_gauge',
-                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), 
-                                      gaugeOutput('defensive_gauge',
-                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), width = 4), 
-                                column(gaugeOutput('ball_gauge',
-                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), 
-                                      gaugeOutput('pass_type_gauge',
-                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), width = 4), 
-                                column(gaugeOutput('Passing_type_gauge',
-                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), 
-                                      gaugeOutput('misc_gauge',
-                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), width = 4)
-                           )
-                          ),
-                           column(width = 6,
-                            box(width = 12, title = "Number of Quantiles By Anove Threshold", height = "325px", 
-                                column(gaugeOutput('attacking_gauge_slider',
-                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), 
-                                      gaugeOutput('defensive_gauge_slider',
-                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), width = 4), 
-                                column(gaugeOutput('ball_gauge_slider',
-                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), 
-                                      gaugeOutput('pass_type_gauge_slider',
-                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), width = 4), 
-                                column(gaugeOutput('Passing_type_gauge_slider',
-                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), 
-                                      gaugeOutput('misc_gauge_slider',
-                                                  width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), width = 4)
-                           )
-                           )
-                ), 
-                fluidRow(
+                             column(width = 3,
+                                    plotlyOutput('radar_quantiles_chart', 
+                                                 width = "100%", 
+                                                 height = "300px") %>% withSpinner(color="#0dc5c1"), 
+                                    
                                       sliderInput(inputId = "quantile_cutoffs", 
                                                   label = "Cutoff for Count", 
                                                   min = 0, max = 100, 
                                                   value = 80, 
                                                   step = 1
-                                                    
-                                                    ), 
+                                                  )
+                                    
+                             ),
+                             column(width = 5, 
+                                    plotlyOutput('all_features_quantiles_density',
+                                                            height = "100%") %>% withSpinner(color="#0dc5c1")
+                                    )
+                                    
+                                    ),  
+                           fluidRow(
+                             box(width = 12, 
+                                  column(width = 4,
+                                         gaugeOutput('attacking_gauge_slider',
+                                                      width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), 
+                                         
+                                         gaugeOutput('defensive_gauge_slider',
+                                                      width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1")
+                                         ),
+                                  
+                                  column(width = 4,
+                                         gaugeOutput('ball_gauge_slider',
+                                                      width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), 
+                                         
+                                         gaugeOutput('pass_type_gauge_slider',
+                                                      width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1")
+                                         ),
+                                  
+                                  column(width = 4,
+                                         gaugeOutput('Passing_type_gauge_slider',
+                                                      width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1"), 
+                                         
+                                         gaugeOutput('misc_gauge_slider',
+                                                      width = "100%", height = "125px") %>% withSpinner(color="#0dc5c1")
+                                         )
+                             )
+                ), 
+                fluidRow( 
                                       numericInput(inputId = 'show_features_plotly', 
                                                    label  = "Number of Top Features To Show", 
                                                    min = 5, 
                                                    max = 100, 
                                                    value = 20)), 
-                          plotlyOutput('bar_plot_ranked_features') %>% withSpinner(color="#0dc5c1"))
-                )
+                          plotlyOutput('bar_plot_ranked_features') %>% withSpinner(color="#0dc5c1")
+                
                 ), 
                 
                 tabPanel(title = "Similar Players", 
