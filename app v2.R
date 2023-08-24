@@ -402,15 +402,51 @@ player_profile_reactive_df <-
     return(target_df)
     
   }
+  
+brief_summary_and_pool <- 
+  function(
+    REACTIVE_DATA, 
+    TARGET_PLAYER, 
+    TARGET_TEAM
+  ){
+    
+    REACTIVE_DATA %>% filter(summary_player == TARGET_PLAYER & team_name == TARGET_PLAYER_TEAM) %>% 
+      select(league_name, summary_min, games_played) -> df
+    
+    minutes <- df$summary_min
+    min_q <- length(which(REACTIVE_DATA$summary_min <= df$summary_min))/nrow(REACTIVE_DATA)
+    
+    games <- df$games_played
+    games_q <- length(which(REACTIVE_DATA$games_played <= df$games_played))/nrow(REACTIVE_DATA)
+    
+    players <-  REACTIVE_DATA %>% filter(summary_player != TARGET_PLAYER & team_name != TARGET_PLAYER_TEAM) %>% nrow()
+    
+    outT <- 
+      data.frame(
+        m = paste0(
+          prettyNum(minutes, big.mark = ","), " (", round(min_q, 4) * 100, "%)"), 
+        
+        g = paste0(
+          prettyNum(games, big.mark = ","), " (", round(games_q, 4) * 100, "%)"), 
+        
+         c = prettyNum(players, big.mark = ",")
+        )
+    
+    colnames(outT) <- c("Minutes Played", "Games Played", "Comparison Pool")
+      
+    return(outT)
+  }
 
 create_field_plot <- 
   function(
     REACTIVE_DATA, 
-    TARGET_PLAYER
+    TARGET_PLAYER, 
+    TARGET_PLAYER_SEASON,
+    TARGET_PLAYER_TEAM
   ){
     
     REACTIVE_DATA %>% 
-      filter(summary_player == TARGET_PLAYER) %>% 
+      filter(summary_player == TARGET_PLAYER & team_name == TARGET_PLAYER_TEAM) %>% 
       select(comb_positions) %>% unlist() -> player_string
     
     player_data <- str_match_all(player_string, "([A-Z]+) \\( ([0-9]+) \\)")[[1]][, 2:3]
@@ -462,9 +498,13 @@ create_field_plot <-
       geom_point(color = "#5da15c") +
       geom_text(size=8) +
       theme(title = element_text(size = 15),
-            text = element_text(size = 30)) +
+            text = element_text(size = 30), 
+            plot.title = element_text(hjust = 0.25, face = "bold")
+            ) +
       ggtitle(
-        "Featured Positions"
+        paste0(
+          TARGET_PLAYER_SEASON, " Featured Positions"
+        )
       )
   }
 
@@ -713,78 +753,6 @@ create_gauge_count <-
         color = color
       )
     )
-  }
-
-player_season_summary <- 
-  function(
-    DATA, 
-    PLAYER, 
-    SEASON, 
-    TEAM
-    ){
-    
-    DATA[summary_player %in% PLAYER & 
-     team_name %in% TEAM & 
-        season %in% SEASON] %>% 
-      
-      group_by(league_name) %>% 
-      summarise(
-        summary_player = summary_player, 
-        summary_age = summary_age, 
-        games_played = games_played, 
-        summary_min = summary_min, 
-        positions = all_positions
-        
-      ) -> out
-    
-    league <- DATA[summary_player %in% PLAYER & 
-     team_name %in% TEAM & 
-        season %in% SEASON]$league_name %>% unlist()
-    
-    ages <- DATA[
-     league_name %in% league & 
-        season %in% SEASON]$summary_age 
-    
-    out$summary_age <- paste0(out$summary_age, 
-                              paste0("(", 100 * round(
-                                length(which(
-                                  out$summary_age >= ages)) /
-                                  length(ages), 2),"%)"))
-    
-    
-    games <- DATA[
-     league_name %in% league & 
-        season %in% SEASON]$games_played 
-    
-    out$games_played <- paste0(out$games_played, 
-                              paste0("(", 100 * round(
-                                length(which(
-                                  out$games_played >= games)) /
-                                  length(games), 2),"%)"))
-    
-    
-    minutes <- DATA[
-     league_name %in% league & 
-        season %in% SEASON]$summary_min 
-    
-    out$summary_min <- paste0(
-                              prettyNum(out$summary_min, big.mark = ","), 
-                              paste0("(", 100 * round(
-                                length(which(
-                                  out$summary_min >= minutes)) /
-                                  length(minutes), 2),"%)"))
-    
-    out$league <- league
-    out$team <- TEAM
-    
-    out <- out %>% select(summary_player, summary_age, 
-                          team, league, games_played, summary_min,
-                          positions)
-    rownames(out) = NULL
-    colnames(out) = c('Player Name', 'Age(League Pecentile)', 
-                      "Team Name", "League Name",'Games(League Pecentile)', 'Minutes(League Pecentile)', 
-                      'Positions')
-    return(out)
   }
 
 radar_quantiles_chart <- 
@@ -1429,6 +1397,7 @@ server_side <-
     
     #### Player Profile Stuff 
         # type in target player name 
+    
     selected_player_profile_name <- 
       eventReactive(
         input$go, {
@@ -1436,22 +1405,6 @@ server_side <-
         }
         )
     
-        # display available competitions, seasons, teams for a selected player name 
-    output$tab <- 
-      renderDataTable({
-        dash_df[dash_df$summary_player == selected_player_profile_name() ] %>% 
-          select(summary_age, season, league_name, team_name, all_positions) %>% 
-          arrange(desc(season), league_name, team_name, all_positions) %>% 
-          mutate(summary_age = as.integer(summary_age)) %>% 
-          setNames(c("Age", "Season", "Competition", "Team", "Positions")) %>% 
-          datatable(options = list(iDisplayLength = 5,
-                                   scrollX = TRUE,
-                                   scrollY = TRUE
-                                   ), 
-                    rownames = F)
-      }, 
-      striped = TRUE, 
-      hover = TRUE)
         # dynamic picker for a player summary team 
         
         ## sometimes we have two + players with the same name playing on different teams. If we type in such a name, we need to be able to 
@@ -1524,6 +1477,13 @@ server_side <-
       
       ########## PLAYER PROFILE SUMMARY PAGE 
       
+      ## big name print 
+      output$rendered_player_header <- 
+        renderUI(
+          tags$h1(paste0(input$player_typed_name, " Player Profile"), 
+                  style = paste0("font-size:", "30px", "; text-align:center; font-weight: bold;"))
+        )
+      
       ##### data frame that is limited to front page parameters 
       reactive_player_summary_df <- 
         reactive(
@@ -1543,21 +1503,24 @@ server_side <-
               COMP_MINUTES_END = input$minutes_to_limit[2]
             )
         )
-      
-      output$player_season_summary <- 
-        renderTable(
-          player_season_summary(
-            PLAYER = input$player_typed_name, 
-            SEASON = input$select_season,
-            DATA = dash_df,
-            TEAM = input$select_team_same_name)
-        )
           
+      output$brief_summary_and_pool <- 
+        renderTable(
+          brief_summary_and_pool(
+            REACTIVE_DATA = reactive_player_summary_df(), 
+            TARGET_PLAYER = input$player_typed_name, 
+            TARGET_TEAM = input$select_team_same_name
+          ), 
+          hover = T, align = 'c', striped = T, width = "75%"
+        )
       output$create_field_plot <- 
         renderPlot(
           create_field_plot(
             REACTIVE_DATA = reactive_player_summary_df(),
-            TARGET_PLAYER = input$player_typed_name)
+            TARGET_PLAYER = input$player_typed_name, 
+            TARGET_PLAYER_SEASON = input$select_season,
+            TARGET_PLAYER_TEAM = input$select_team_same_name
+            )
         )
 
       percentile_data_frame_one_player_df <-
@@ -2124,26 +2087,28 @@ body <-
                          fluidPage(
                            fluidRow(
                              column(width = 6, 
-                                    tableOutput('player_season_summary') %>% withSpinner(color="#0dc5c1")), 
+                                    fluidRow(
+                                      
+                                    uiOutput('rendered_player_header') %>% withSpinner(color="#0dc5c1"), 
+                                    tableOutput('brief_summary_and_pool') %>% withSpinner(color="#0dc5c1"), 
+                                    plotOutput('create_field_plot') %>% withSpinner(color="#0dc5c1")
+                                    )
+                                    ), 
                              column(width = 6, 
-                                    plotOutput('create_field_plot') %>% withSpinner(color="#0dc5c1"))
+                                      sliderInput(inputId = "quantile_cutoffs", 
+                                                  label = "Cutoff for Count", 
+                                                  min = 0, max = 100, 
+                                                  value = 80, 
+                                                  step = 1
+                                                    
+                                                    ), 
+                                      numericInput(inputId = 'show_features_plotly', 
+                                                   label  = "Number of Top Features To Show", 
+                                                   min = 5, 
+                                                   max = 100, 
+                                                   value = 20))
                            ), 
                            fluidRow(
-                             column(width = 6), 
-                             column(width = 6, 
-                                    sliderInput(inputId = "quantile_cutoffs", 
-                                                label = "Cutoff for Count", 
-                                                min = 0, max = 100, 
-                                                value = 80, 
-                                                step = 1
-                                                  
-                                                  ), 
-                                    numericInput(inputId = 'show_features_plotly', 
-                                                 label  = "Number of Top Features To Show", 
-                                                 min = 5, 
-                                                 max = 100, 
-                                                 value = 20)
-                           ), 
                            fluidRow(
                              column(width = 6, 
                               box(width = 12, title = "Average Quantiles By Category", height = "325px", 
