@@ -407,17 +407,17 @@ brief_summary_and_pool <-
   function(
     REACTIVE_DATA, 
     TARGET_PLAYER, 
-    TARGET_TEAM
+    TARGET_PLAYER_TEAM
   ){
     
-    REACTIVE_DATA %>% filter(summary_player == TARGET_PLAYER & team_name == TARGET_PLAYER_TEAM) %>% 
+    REACTIVE_DATA %>% filter(summary_player %in% TARGET_PLAYER & team_name %in% TARGET_PLAYER_TEAM) %>% 
       select(league_name, summary_min, games_played) -> df
     
-    minutes <- df$summary_min
-    min_q <- length(which(REACTIVE_DATA$summary_min <= df$summary_min))/nrow(REACTIVE_DATA)
+    minutes <- sum(df$summary_min) %>% unlist()
+    min_q <- length(which(REACTIVE_DATA$summary_min <= minutes))/nrow(REACTIVE_DATA)
     
-    games <- df$games_played
-    games_q <- length(which(REACTIVE_DATA$games_played <= df$games_played))/nrow(REACTIVE_DATA)
+    games <- sum(df$games_played) %>% unlist()
+    games_q <- length(which(REACTIVE_DATA$games_played <= games))/nrow(REACTIVE_DATA)
     
     players <-  REACTIVE_DATA %>% filter(summary_player != TARGET_PLAYER & team_name != TARGET_PLAYER_TEAM) %>% nrow()
     
@@ -812,6 +812,62 @@ radar_quantiles_chart <-
         )
       
     )
+  }
+
+all_features_quantiles_density <- 
+  function(
+    REACTIVE_DATA
+  ){
+    
+    f <- REACTIVE_DATA
+
+    data_dict_f <- 
+        data_dict %>% 
+        select(
+          Data.Frame.Name, 
+          Pretty.Name.from.FBref,
+          stat_cat
+        ) %>% 
+        mutate(
+          names = Data.Frame.Name, 
+          descr = Pretty.Name.from.FBref
+        )
+    
+    f <- f %>% 
+      left_join(data_dict_f, 
+                by = 'names')
+    
+    f_plot <- 
+      f %>% 
+      group_by(stat_cat) %>% 
+      summarize(
+        dens_x =  density(percentiles_per_90)$x, 
+        dens_y =  density(percentiles_per_90)$y/ sum(density(percentiles_per_90)$y)
+      )
+  
+    with(f_plot, 
+    f_plot %>% 
+      plot_ly(
+        x = ~dens_x, 
+        y = ~dens_y, 
+        color = ~stat_cat, 
+        type = "scatter", 
+        mode = 'lines', 
+        text = 
+          paste(
+            "Category: ", stat_cat, 
+            "<br>Approx. Percentile: ", round(dens_x, 6),
+            "<br>Approx. Probability: ", round(dens_y, 6)
+            
+          ), 
+        hoverinfo = 'text'
+        
+      ) %>% 
+      layout(xaxis = list(range = c(0, 1), zeroline = F, title = "Percentiles"), 
+             yaxis = list(title = "Approximate Probability"))
+    )
+
+    
   }
 
 bar_plot_ranked_features <- 
@@ -1475,6 +1531,22 @@ server_side <-
                         )
         )
       
+          output$table_w_names <- 
+            renderDataTable({
+              dash_df[dash_df$summary_player == selected_player_profile_name() ] %>% 
+                select(summary_age, season, league_name, team_name, all_positions) %>% 
+                arrange(desc(season), league_name, team_name, all_positions) %>% 
+                mutate(summary_age = as.integer(summary_age)) %>% 
+                setNames(c("Age", "Season", "Competition", "Team", "Positions")) %>% 
+                datatable(options = list(iDisplayLength = 5,
+                                         scrollX = TRUE,
+                                         scrollY = TRUE
+                                         ), 
+                          rownames = F)
+            }, 
+            striped = TRUE, 
+            hover = TRUE)
+          
       ########## PLAYER PROFILE SUMMARY PAGE 
       
       ## big name print 
@@ -1509,7 +1581,7 @@ server_side <-
           brief_summary_and_pool(
             REACTIVE_DATA = reactive_player_summary_df(), 
             TARGET_PLAYER = input$player_typed_name, 
-            TARGET_TEAM = input$select_team_same_name
+            TARGET_PLAYER_TEAM = input$select_team_same_name
           ), 
           hover = T, align = 'c', striped = T, width = "75%"
         )
@@ -1654,6 +1726,13 @@ server_side <-
           )
         )
       
+      output$all_features_quantiles_density <- 
+        renderPlotly(
+          all_features_quantiles_density(
+            REACTIVE_DATA = all_features_ranked_w_names()
+          )
+        )
+    
       output$bar_plot_ranked_features <- 
         renderPlotly(
           bar_plot_ranked_features(
@@ -2028,7 +2107,7 @@ body <-
                                   ),
                            
                            column(width = 6, 
-                                  dataTableOutput('tab'))
+                                  dataTableOutput('table_w_names'))
                           )
                          ), 
                          fluidRow(
@@ -2042,7 +2121,8 @@ body <-
                                       bsTooltip(id = "generate_report", 
                                                 placement = "bottom", 
                                                 trigger = "hover", 
-                                                title = "Pushing this button generates reports on two next tabs based on selected parameters. ")), 
+                                                title = "Pushing this button generates reports on two next 
+                                                tabs based on selected parameters. ")), 
                                
                                column(
                                  width = 3, 
@@ -2086,7 +2166,7 @@ body <-
                 tabPanel(title = "Player Profile", 
                          fluidPage(
                            fluidRow(
-                             column(width = 6, 
+                             column(width = 6, align="center", 
                                     fluidRow(
                                       
                                     uiOutput('rendered_player_header') %>% withSpinner(color="#0dc5c1"), 
@@ -2095,18 +2175,15 @@ body <-
                                     )
                                     ), 
                              column(width = 6, 
-                                      sliderInput(inputId = "quantile_cutoffs", 
-                                                  label = "Cutoff for Count", 
-                                                  min = 0, max = 100, 
-                                                  value = 80, 
-                                                  step = 1
-                                                    
-                                                    ), 
-                                      numericInput(inputId = 'show_features_plotly', 
-                                                   label  = "Number of Top Features To Show", 
-                                                   min = 5, 
-                                                   max = 100, 
-                                                   value = 20))
+                                    tabsetPanel(
+                                      tabPanel("Main", 
+                                               plotlyOutput('radar_quantiles_chart') %>% withSpinner(color="#0dc5c1")
+                                               ), 
+                                      tabPanel("Quantile Distribution", 
+                                               plotlyOutput('all_features_quantiles_density') %>% withSpinner(color="#0dc5c1")
+                                               )
+                                    )
+                                    )
                            ), 
                            fluidRow(
                            fluidRow(
@@ -2144,7 +2221,18 @@ body <-
                            )
                 ), 
                 fluidRow(
-                          plotlyOutput('radar_quantiles_chart') %>% withSpinner(color="#0dc5c1")), 
+                                      sliderInput(inputId = "quantile_cutoffs", 
+                                                  label = "Cutoff for Count", 
+                                                  min = 0, max = 100, 
+                                                  value = 80, 
+                                                  step = 1
+                                                    
+                                                    ), 
+                                      numericInput(inputId = 'show_features_plotly', 
+                                                   label  = "Number of Top Features To Show", 
+                                                   min = 5, 
+                                                   max = 100, 
+                                                   value = 20)), 
                           plotlyOutput('bar_plot_ranked_features') %>% withSpinner(color="#0dc5c1"))
                 )
                 ), 
