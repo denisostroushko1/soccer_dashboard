@@ -494,7 +494,7 @@ create_field_plot <-
   ggplot(data = position_coords,
        aes(x = coord1, y = coord2, label = label)) +
 
-      annotate_pitch(colour = "white", alpha = 1, fill = "#5da15c", linewidth = 2) +
+      annotate_pitch(colour = "white", alpha = 1, fill = "#5da15c", linewidth = 2) + 
       theme_pitch(aspect_ratio = NULL) +
       geom_point(color = "#5da15c") +
       geom_text(size=8) +
@@ -875,6 +875,77 @@ all_features_quantiles_density <-
     
   }
 
+all_features_quantiles_boxplot <- 
+  function(
+    REACTIVE_DATA
+  ){
+    
+    f <- REACTIVE_DATA
+
+    data_dict_f <- 
+        data_dict %>% 
+        select(
+          Data.Frame.Name, 
+          Pretty.Name.from.FBref,
+          stat_cat
+        ) %>% 
+        mutate(
+          names = Data.Frame.Name, 
+          descr = Pretty.Name.from.FBref
+        )
+    
+    f <- f %>% 
+      left_join(data_dict_f, 
+                by = 'names')
+    
+    f <- 
+      f %>% 
+      mutate(
+        stat_cat = 
+          factor(stat_cat, 
+                 levels = 
+                   # order stat categories by average quantile 
+                   f %>% group_by(stat_cat) %>% 
+                    summarize(m = mean(`Percentile per 90`)) %>% 
+                     arrange(m) %>% select(stat_cat) %>% unlist()
+          )
+      )
+    
+    with(f, 
+         plot_ly() %>% 
+           
+           add_markers(
+             x = ~jitter(as.numeric(stat_cat)), 
+             y = ~`Percentile per 90`, 
+             color = ~stat_cat,
+             
+             marker = list(size = 6),
+             hoverinfo = "text",
+             text = ~paste0(`Stat. Name`,"<br>Percentile: ",round(`Percentile per 90`, 2)),
+             showlegend = FALSE
+             ) %>% 
+           
+           add_trace(
+
+             x = ~as.numeric(stat_cat),
+             y = ~`Percentile per 90`,
+             color = ~stat_cat,
+
+             type = "box",
+             boxpoints = F,
+             hoverinfo =  "y", 
+             opacity = 0.5
+           ) %>%
+           
+           layout(
+             xaxis = list(showticklabels = FALSE, title = ""), 
+             legend = list(orientation = 'h'), 
+             title = "Distribtuion of Quantiles"
+           )
+         ) 
+    
+  }
+
 bar_plot_ranked_features <- 
   function(
     REACTIVE_DATA, 
@@ -912,10 +983,72 @@ bar_plot_ranked_features <-
            layout(xaxis = list(title = ""), 
                   yaxis = list(title = ""), 
                   legend = list(orientation = "h", x = 0, y = 1.2),
-                  margin = list(l = 25, r = 25, t = 50, b = 25))
+                  margin = list(l = 25, r = 25, t = 50, b = 25)
+                  )
          
     
   }
+
+
+one_feature_histogram <- 
+  function(
+    DATA, 
+    TARGET_PLAYER, 
+    TARGET_PLAYER_LEAGUE, 
+    TARGET_PLAYER_TEAM, 
+    PLOT_VAR
+    ){
+    
+    data_dict %>% filter(Pretty.Name.from.FBref == PLOT_VAR) %>% 
+      select(Data.Frame.Name) %>% unlist() %>% set_names(NULL) -> plot_var_df
+    
+    DATA %>% 
+      select(all_of(c("summary_player", "team_name","league_name", "summary_min", plot_var_df)))  -> plot_df
+    
+    plot_df$per_90 <- plot_df[[plot_var_df]]/plot_df$summary_min * 90
+
+    plot_df %>% filter(summary_player == TARGET_PLAYER & 
+                         league_name == TARGET_PLAYER_LEAGUE & 
+                         team_name == TARGET_PLAYER_TEAM) %>% select(per_90) %>%  unlist()-> x_t
+    
+    plot_df %>% filter(!(summary_player == TARGET_PLAYER & 
+                         league_name == TARGET_PLAYER_LEAGUE & 
+                         team_name == TARGET_PLAYER_TEAM)) -> plot_df
+    plot_ly(
+      data = plot_df,
+      alpha = .75
+    ) %>%
+      add_histogram(
+        x = ~per_90,
+        color = ~league_name,
+        text = '',
+        hoverinfo = 'text',
+        histnorm = "probability"
+        ) %>%
+      
+      add_trace(
+        type = "scatter", 
+        mode = "lines",
+        x = c(x_t, x_t),
+        y = c(0,1), 
+        # x0 = x_t, x1 = x_t, 
+        # y0 = 0, y1 = 1, 
+        line = list(color = "red", dash = "dash", width = 2), 
+        name = paste0(TARGET_PLAYER, "'s Value")
+      ) %>% 
+      
+      layout(legend = list(orientation = 'h'),
+             barmode = "stack",
+             yaxis = list(range = c(0,1)), 
+             xaxis = list(title = '', nticks = 5), 
+             title = list(
+               text = paste0(PLOT_VAR," Per 90 Minutes<br>", TARGET_PLAYER, " ",round(x_t, 2)), 
+               y = 1.5, 
+               font = list(size = 12))
+             )  
+  
+  }
+
 
 dynamic_table_summary <- 
   function(
@@ -1281,8 +1414,15 @@ pca_results_data <-
       
       summary(pca_res)$importance %>% t() -> d
     
-    d <- d[d[,3] < .85, ]
-    d <- data.frame(d)
+      d <- data.frame(d)
+      
+      
+      if(d %>% filter(`Cumulative.Proportion` < .8) %>% nrow() == 1){
+        d <- head(d, 2)
+      }else(
+        d <- d %>% filter(`Cumulative.Proportion` < .8)
+      )
+      
     d$pc <- as.character(rownames(d))
     
     
@@ -1299,9 +1439,13 @@ similar_pca_table <-
   ){
     summary(PCA_RES)$importance %>% t() -> d
     
-    d <- d[d[,3] < .85, ]
-    
     d <- data.frame(d)
+    
+    if(d %>% filter(`Cumulative.Proportion` < .8) %>% nrow() == 1){
+      d <- head(d, 2)
+    }else(
+      d <- d %>% filter(`Cumulative.Proportion` < .8)
+    )
     
     d$pc <- as.character(rownames(d))
     
@@ -1403,7 +1547,7 @@ similar_pca_plot <-
       
       layout(xaxis = list(title = X_AXIS_PC, zeroline = F), 
              yaxis = list(title = Y_AXIS_PC, zeroline = F),
-             legend = list(orientation = 'h'))
+             legend = list(orientation = 'h', y = -0.25))
       
   }
                                             ########################
@@ -1729,9 +1873,9 @@ server_side <-
           )
         )
       
-      output$all_features_quantiles_density <- 
+      output$all_features_quantiles_boxplot <- 
         renderPlotly(
-          all_features_quantiles_density(
+          all_features_quantiles_boxplot(
             REACTIVE_DATA = all_features_ranked_w_names()
           )
         )
@@ -1743,6 +1887,17 @@ server_side <-
             FEATURES_TO_SHOW = input$show_features_plotly)
         )
       
+      output$one_feature_histogram <- 
+        renderPlotly(
+          one_feature_histogram(
+            DATA = reactive_player_summary_df(), 
+            TARGET_PLAYER = input$player_typed_name, 
+            TARGET_PLAYER_TEAM = input$select_team_same_name , 
+            TARGET_PLAYER_LEAGUE = input$select_league, 
+            PLOT_VAR = input$hist_feature
+            )
+        )
+  
       ########## 
       # similar player stuff 
       
@@ -2059,7 +2214,7 @@ body <-
                               
                                   textInput(inputId = 'player_typed_name', 
                                          label = "Type in Player Name", 
-                                         value = 'Kevin De Bruyne'),
+                                         value = 'Bongokuhle Hlongwane'),
                                 
                                     uiOutput('picked_player_available_seasons') %>% withSpinner(color="#0dc5c1"), 
                                     uiOutput('same_name_team_picker') %>% withSpinner(color="#0dc5c1"), 
@@ -2100,14 +2255,13 @@ body <-
                                  selectInput(inputId = 'comp_leagues', 
                                      label = "Collect Percentiles Across Leagues:", 
                                      choices = sort(unique(dash_df$league_name)), 
-                                     selected = c("Major League Soccer", top_5_leagues), 
+                                     selected = c(top_5_leagues), 
                                      multiple = T), 
                                  
                                  selectInput(inputId = 'comp_seasons', 
                                                label = "Select Seasons", 
                                                choices = sort(unique(dash_df$season)), 
-                                               selected = c('2022/2023',
-                                                            '2023'), 
+                                               selected = c('2022/2023'), 
                                      multiple = T
                                      ), 
                                  
@@ -2162,7 +2316,7 @@ body <-
                                     
                              ),
                              column(width = 5, 
-                                    plotlyOutput('all_features_quantiles_density',
+                                    plotlyOutput('all_features_quantiles_boxplot',
                                                             height = "100%") %>% withSpinner(color="#0dc5c1")
                                     )
                                     
@@ -2194,14 +2348,41 @@ body <-
                                          )
                              )
                 ), 
-                fluidRow( 
-                                      numericInput(inputId = 'show_features_plotly', 
-                                                   label  = "Number of Top Features To Show", 
-                                                   min = 5, 
-                                                   max = 100, 
-                                                   value = 20)), 
-                          plotlyOutput('bar_plot_ranked_features') %>% withSpinner(color="#0dc5c1")
                 
+                fluidRow(
+                  column(width = 4, 
+                         box(width = 12, 
+                          numericInput(inputId = 'show_features_plotly',
+                                       label  = "Number of Top Features To Show",
+                                       min = 5,
+                                       max = 100,
+                                       value = 20)
+                         )), 
+                  column(width = 4),
+                  column(width = 4, 
+                         box(width = 12, 
+                             selectInput(inputId="hist_feature", 
+                                     selected = 'Expected Goals',
+                                     label="Choose a Variable for Histogram",
+                                     choices=  
+                                       setdiff( # remove some columns from options here 
+                                         data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(), 
+                                         remove_colnames_dict
+                                         ) %>% sort()
+                         ))) 
+                ), 
+                
+                fluidRow( 
+                  column(
+                    width = 8,
+                      plotlyOutput('bar_plot_ranked_features') %>% withSpinner(color="#0dc5c1")
+                     
+                  ),
+                  column(
+                    width = 4, 
+                    plotlyOutput('one_feature_histogram')  %>% withSpinner(color="#0dc5c1")
+                    )
+                )
                 ), 
                 
                 tabPanel(title = "Similar Players", 
