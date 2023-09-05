@@ -885,7 +885,8 @@ all_features_quantiles_density <-
 
 all_features_quantiles_boxplot <- 
   function(
-    REACTIVE_DATA
+    REACTIVE_DATA,
+    CUTOFF
   ){
     
     f <- REACTIVE_DATA
@@ -945,6 +946,16 @@ all_features_quantiles_boxplot <-
              opacity = 0.5
            ) %>%
            
+          add_trace(
+            type = "scatter", 
+            mode = "lines",
+            x = c(0, length(unique(as.numeric(f$stat_cat))) + 1),
+            y = c(CUTOFF/100, CUTOFF/100), 
+            showlegend = F,  
+            # x0 = x_t, x1 = x_t, 
+            # y0 = 0, y1 = 1, 
+            line = list(color = "red", dash = "dash", width = 2)
+          ) %>% 
            layout(
              xaxis = list(showticklabels = FALSE, title = ""), 
              legend = list(orientation = 'h'), 
@@ -2074,7 +2085,8 @@ server_side <-
       output$all_features_quantiles_boxplot <- 
         renderPlotly(
           all_features_quantiles_boxplot(
-            REACTIVE_DATA = all_features_ranked_w_names()
+            REACTIVE_DATA = all_features_ranked_w_names(),
+            CUTOFF = input$quantile_cutoffs
           )
         )
     
