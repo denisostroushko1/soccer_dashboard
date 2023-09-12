@@ -2599,10 +2599,13 @@ body <-
                     )
                 )
                 ), 
-                
-                tabPanel(title = "Similar Players",
-                         fluidPage(
-                         column(
+                tabPanel(
+                  title = "Similar Players",
+                  tabsetPanel(
+                    tabPanel(
+                      title = "Best Features Based", 
+                      fluidPage(
+                        column(
                            width = 3, 
                            numericInput(inputId = 'target_sim_players', 
                                                               label = "Number of Similar Players to Find", 
@@ -2615,48 +2618,133 @@ body <-
                                                           max = 150, 
                                                           value = 30), 
                                             
-                                            selectInput(inputId="feature", 
+                                            tableOutput('similar_pca_table'), 
+                                             uiOutput('pc_pick_1') %>% withSpinner(color="#0dc5c1"), 
+                                             uiOutput('pc_pick_2') %>% withSpinner(color="#0dc5c1")
+                         ), 
+                        column(
+                          width = 9, 
+                          dataTableOutput('similar_players_table') %>% withSpinner(color="#0dc5c1"),  
+                           plotlyOutput('similar_mds_plot', height = "500px") %>% withSpinner(color="#0dc5c1") ,
+                           plotlyOutput('similar_pca_plot', height = "500px") %>% withSpinner(color="#0dc5c1")
+                        )
+                      )
+                    ), 
+                    
+                    tabPanel(
+                      title = "Selected Features Based", 
+                      fluidPage(
+                        column(
+                          width = 3, 
+                           numericInput(inputId = 'target_sim_players_2',
+                                                              label = "Number of Similar Players to Find",
+                                                              min = 0,
+                                                              max = 1000,
+                                                              value = 30),
+
+                                            selectInput(inputId="feature",
                                                          selected = c(
                                                                       'Goals'
                                                                       ,'Expected Goals'
                                                                       ,'Passes Completed'
                                                                       ,'Total Passing Distance'
-                                                                      ,'Number of players tackled'	
+                                                                      ,'Number of players tackled'
                                                                       ,'Dribbles Challenged'
-                                                                      ,'Progressive Carries'	
+                                                                      ,'Progressive Carries'
                                                                       ,'Miscontrols'
                                                                       ),
                                                          label="Choose Variables for Table",
-                                                         choices=  
-                                                           setdiff( # remove some columns from options here 
-                                                             data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(), 
+                                                         choices=
+                                                           setdiff( # remove some columns from options here
+                                                             data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(),
                                                              remove_colnames_dict
                                                            ),
-                                                         multiple=TRUE), 
-                                            tableOutput('similar_pca_table'), 
-                                             uiOutput('pc_pick_1') %>% withSpinner(color="#0dc5c1"), 
-                                             uiOutput('pc_pick_2') %>% withSpinner(color="#0dc5c1")
-                         ), 
-                         column(
-                           width = 9, 
-                           tabsetPanel(
-                             tabPanel(
-                               title = "Best Features Based",
-                               dataTableOutput('similar_players_table') %>% withSpinner(color="#0dc5c1"),  
-                               plotlyOutput('similar_mds_plot', height = "500px") %>% withSpinner(color="#0dc5c1") ,
-                               plotlyOutput('similar_pca_plot', height = "500px") %>% withSpinner(color="#0dc5c1")
-                               ), 
-                             tabPanel(
-                               title = "Selected Features Based"
-                             ), 
-                             tabPanel(
-                               title = "All Features Based"
-                             )
-                           )
-                         )
-                         )
-                         )
+                                                         multiple=TRUE)
+                          
+                        ), 
+                        column(
+                          width = 9
+                        )
+                      )
+                    ),
+                    
+                    tabPanel(
+                      title = "All Features Based",
+                      
+                      column(
+                        width = 3, 
+                           numericInput(inputId = 'target_sim_players_3',
+                                                              label = "Number of Similar Players to Find",
+                                                              min = 0,
+                                                              max = 1000,
+                                                              value = 30)
+                        
+                      ), 
+                      
+                      column(
+                        width = 9
+                      )
+                    )
+                  )       
+                )
                 
+                # tabPanel(title = "Similar Players 2",
+                #          fluidPage(
+                #          column(
+                #            width = 3, 
+                #            numericInput(inputId = 'target_sim_players', 
+                #                                               label = "Number of Similar Players to Find", 
+                #                                               min = 0, 
+                #                                               max = 1000, 
+                #                                               value = 30), 
+                #                              numericInput(inputId = 'top_features_used', 
+                #                                           label = "Number of Features to Use", 
+                #                                           min = 0, 
+                #                                           max = 150, 
+                #                                           value = 30), 
+                #                             
+                #                             selectInput(inputId="feature", 
+                #                                          selected = c(
+                #                                                       'Goals'
+                #                                                       ,'Expected Goals'
+                #                                                       ,'Passes Completed'
+                #                                                       ,'Total Passing Distance'
+                #                                                       ,'Number of players tackled'	
+                #                                                       ,'Dribbles Challenged'
+                #                                                       ,'Progressive Carries'	
+                #                                                       ,'Miscontrols'
+                #                                                       ),
+                #                                          label="Choose Variables for Table",
+                #                                          choices=  
+                #                                            setdiff( # remove some columns from options here 
+                #                                              data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(), 
+                #                                              remove_colnames_dict
+                #                                            ),
+                #                                          multiple=TRUE), 
+                #                             tableOutput('similar_pca_table'), 
+                #                              uiOutput('pc_pick_1') %>% withSpinner(color="#0dc5c1"), 
+                #                              uiOutput('pc_pick_2') %>% withSpinner(color="#0dc5c1")
+                #          ), 
+                #          column(
+                #            width = 9, 
+                #            tabsetPanel(
+                #              tabPanel(
+                #                title = "Best Features Based",
+                #                dataTableOutput('similar_players_table') %>% withSpinner(color="#0dc5c1"),  
+                #                plotlyOutput('similar_mds_plot', height = "500px") %>% withSpinner(color="#0dc5c1") ,
+                #                plotlyOutput('similar_pca_plot', height = "500px") %>% withSpinner(color="#0dc5c1")
+                #                ), 
+                #              tabPanel(
+                #                title = "Selected Features Based"
+                #              ), 
+                #              tabPanel(
+                #                title = "All Features Based"
+                #              )
+                #            )
+                #          )
+                #          )
+                #          )
+                # 
               )),
       tabItem(tabName = "two_player_comparison"), 
       tabItem(tabName = "team_profile")
