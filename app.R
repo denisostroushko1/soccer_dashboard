@@ -2631,8 +2631,9 @@ body <-
                              bsTooltip(id = "go", 
                                        title = "Pushing this button updates table of teams, leagues, and seasons where a player name occurs",
                                        placement = "bottom", 
-                                       trigger = "hover", 
-                                       options = list(container = "body")), 
+                                       trigger = "hover"
+                                      # ,options = list(container = "body")
+                                       ), 
                
                            column(width = 3, 
                                 fluidRow(
@@ -2653,14 +2654,14 @@ body <-
                                   bsTooltip("type_cog",
                                     title = "Make sure player name includes all special charachters, refer to the Helper Tab. ",
                                     placement = "right",
-                                    trigger = "hover", 
-                                    options = list(container = 'body')
+                                    trigger = "hover"
+                                    #,options = list(container = 'body')
                                   ), 
                                 bsTooltip("type_question",
                                     title = "Make sure player name has no spaces before or after the name. ",
                                     placement = "right",
-                                    trigger = "hover", 
-                                    options = list(container = 'body')
+                                    trigger = "hover"
+                                    #,options = list(container = 'body')
                                   ), 
                               
                                   textInput(inputId = 'player_typed_name', 
