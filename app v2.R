@@ -96,6 +96,16 @@ standard_box_style = "overflow-y: scroll;overflow-x: scroll;"
                                   
 ### data dictionary stuff
 
+find_data_frame_names <- 
+  function(
+    PRETTY_NAME_FEATURES){
+    
+    data_dict %>% 
+      filter(Pretty.Name.from.FBref %in% PRETTY_NAME_FEATURES) %>% 
+      select(Data.Frame.Name) %>% unlist() %>% setNames(NULL)
+    
+  }
+
 display_players <- 
   function(
     DATA, 
@@ -1441,7 +1451,7 @@ pca_results_data <-
       d <- data.frame(d)
       
       
-      if(d %>% filter(`Cumulative.Proportion` < .8) %>% nrow() == 1){
+      if(d %>% filter(`Cumulative.Proportion` < .8) %>% nrow() <= 1){
         d <- head(d, 2)
       }else(
         d <- d %>% filter(`Cumulative.Proportion` < .8)
@@ -1465,11 +1475,11 @@ similar_pca_table <-
     
     d <- data.frame(d)
     
-    if(d %>% filter(`Cumulative.Proportion` < .8) %>% nrow() == 1){
-      d <- head(d, 2)
-    }else(
-      d <- d %>% filter(`Cumulative.Proportion` < .8)
-    )
+      if(d %>% filter(`Cumulative.Proportion` < .8) %>% nrow() <= 1){
+        d <- head(d, 2)
+      }else(
+        d <- d %>% filter(`Cumulative.Proportion` < .8)
+      )
     
     d$pc <- as.character(rownames(d))
     
@@ -2109,7 +2119,7 @@ server_side <-
         )
   
       ########## 
-      # similar player stuff 
+      # similar player stuff based on the best ranked features 
       
       best_features_vector <- 
         reactive(
@@ -2151,6 +2161,13 @@ server_side <-
             FEATURES_LIST = best_features_vector()
           )
         )
+      
+    output$similar_pca_table <- 
+      renderTable(
+        similar_pca_table(
+          PCA_RES = pca_res()
+        )
+      )
       
        output$pc_pick_1 <- 
             renderUI({
@@ -2197,13 +2214,6 @@ server_side <-
               Y_AXIS_PC = input$select_pc_plot_2
               )
         )
-      
-    output$similar_pca_table <- 
-      renderTable(
-        similar_pca_table(
-          PCA_RES = pca_res()
-        )
-      )
     
     output$similar_mds_plot <- 
       renderPlotly(
@@ -2216,6 +2226,119 @@ server_side <-
           SIMILAR_PLAYERS = simialr_players_df()
         )
       )
+    
+    ############
+    # similar players based on selected features 
+    
+    selected_features <- 
+      reactive(
+        find_data_frame_names(
+          PRETTY_NAME_FEATURES = input$feature
+          )
+      )
+    
+      output$similar_players_table_2 <- 
+        renderDataTable({
+          similar_players_table(
+            DATA_W_DISTANCE = similar_players_euclid_dist_data_df_2() , 
+            TOP_PLAYERS_SHOW = input$target_sim_players_2
+          )
+        })
+          
+
+      similar_players_euclid_dist_data_df_2 <- 
+        reactive(
+          similar_players_euclid_dist_data(
+            REACTIVE_DATA = reactive_player_summary_df(), 
+            TARGET_PLAYER = input$player_typed_name, 
+            TARGET_PLAYER_TEAM = input$select_team_same_name, 
+            SEASON = input$select_season, 
+            FEATURES_LIST = selected_features()
+          )
+        )
+      
+      data_from_pca_2 <- 
+        reactive(
+          pca_results_data(
+            REACTIVE_DATA = similar_players_euclid_dist_data_df_2(), 
+            TARGET_PLAYER = input$player_typed_name, 
+            TARGET_PLAYER_TEAM = input$select_team_same_name, 
+            SEASON = input$select_season,
+            FEATURES_LIST = selected_features()
+          )
+        )
+      
+      
+      pca_res_2 <- 
+        reactive(
+          pca_results(
+            REACTIVE_DATA = reactive_player_summary_df(), 
+            TARGET_PLAYER = input$player_typed_name, 
+            TARGET_PLAYER_TEAM = input$select_team_same_name, 
+            SEASON = input$select_season, 
+            FEATURES_LIST = selected_features()
+          )
+        )
+        
+      output$similar_pca_table_2 <- 
+        renderTable(
+          similar_pca_table(
+            PCA_RES = pca_res_2()
+          )
+        )
+      
+       output$pc_pick_1_2 <- 
+            renderUI({
+              
+              selectInput(inputId = 'select_pc_plot_1_2', 
+                           label = "Pick a PC for X-axis", 
+                           choices = colnames(data_from_pca_2())[grep("PC", colnames(data_from_pca_2()))], 
+                           selected = colnames(data_from_pca_2())[grep("PC", colnames(data_from_pca_2()))][1])
+          })
+    
+       output$pc_pick_2_2 <- 
+            renderUI({
+              
+              selectInput(inputId = 'select_pc_plot_2_2', 
+                           label = "Pick a PC for Y-axis", 
+                           choices = colnames(data_from_pca_2())[grep("PC", colnames(data_from_pca_2()))], 
+                           selected = colnames(data_from_pca_2())[grep("PC", colnames(data_from_pca_2()))][2])
+          })
+       
+       output$similar_players_table_2 <- 
+        renderDataTable({
+          similar_players_table(
+            DATA_W_DISTANCE = similar_players_euclid_dist_data_df_2() , 
+            TOP_PLAYERS_SHOW = input$target_sim_players_2
+          )
+          
+        })
+      
+      similar_pca_table_2 <- 
+        renderTable(
+          similar_pca_table(
+            PCA_RES = pca_res_2()
+          )
+        )
+      
+      simialr_players_df_2 <- 
+        reactive(
+          similar_players_euclid_dist_data_df()  %>% 
+            arrange(scaled_dist) %>% 
+            head(input$target_sim_players) 
+        )
+      
+      output$similar_pca_plot_2 <-
+        renderPlotly(
+          similar_pca_plot(
+              REACTIVE_PCA_DF = data_from_pca_2(),
+              PLAYER = input$player_typed_name,
+              TEAM = input$select_team_same_name,
+              SIMILAR_PLAYERS = simialr_players_df_2(),
+              X_AXIS_PC = input$select_pc_plot_1_2, 
+              Y_AXIS_PC = input$select_pc_plot_2_2
+              )
+        )
   }
 
                                             ########################
@@ -2625,7 +2748,6 @@ body <-
                         column(
                           width = 9, 
                           dataTableOutput('similar_players_table') %>% withSpinner(color="#0dc5c1"),  
-                           plotlyOutput('similar_mds_plot', height = "500px") %>% withSpinner(color="#0dc5c1") ,
                            plotlyOutput('similar_pca_plot', height = "500px") %>% withSpinner(color="#0dc5c1")
                         )
                       )
@@ -2655,15 +2777,21 @@ body <-
                                                                       ),
                                                          label="Choose Variables for Table",
                                                          choices=
-                                                           setdiff( # remove some columns from options here
+                                                           setdiff(  
                                                              data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(),
-                                                             remove_colnames_dict
+                                                             c("Nationality", "Position",remove_colnames_dict)
                                                            ),
-                                                         multiple=TRUE)
+                                                         multiple=TRUE), 
+                                            
+                                            tableOutput('similar_pca_table_2'), 
+                                             uiOutput('pc_pick_1_2') %>% withSpinner(color="#0dc5c1"), 
+                                             uiOutput('pc_pick_2_2') %>% withSpinner(color="#0dc5c1")
                           
                         ), 
                         column(
-                          width = 9
+                          width = 9, 
+                          dataTableOutput('similar_players_table_2') %>% withSpinner(color="#0dc5c1"),  
+                           plotlyOutput('similar_pca_plot_2', height = "500px") %>% withSpinner(color="#0dc5c1")
                         )
                       )
                     ),
@@ -2687,65 +2815,8 @@ body <-
                     )
                   )       
                 )
-                
-                # tabPanel(title = "Similar Players 2",
-                #          fluidPage(
-                #          column(
-                #            width = 3, 
-                #            numericInput(inputId = 'target_sim_players', 
-                #                                               label = "Number of Similar Players to Find", 
-                #                                               min = 0, 
-                #                                               max = 1000, 
-                #                                               value = 30), 
-                #                              numericInput(inputId = 'top_features_used', 
-                #                                           label = "Number of Features to Use", 
-                #                                           min = 0, 
-                #                                           max = 150, 
-                #                                           value = 30), 
-                #                             
-                #                             selectInput(inputId="feature", 
-                #                                          selected = c(
-                #                                                       'Goals'
-                #                                                       ,'Expected Goals'
-                #                                                       ,'Passes Completed'
-                #                                                       ,'Total Passing Distance'
-                #                                                       ,'Number of players tackled'	
-                #                                                       ,'Dribbles Challenged'
-                #                                                       ,'Progressive Carries'	
-                #                                                       ,'Miscontrols'
-                #                                                       ),
-                #                                          label="Choose Variables for Table",
-                #                                          choices=  
-                #                                            setdiff( # remove some columns from options here 
-                #                                              data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(), 
-                #                                              remove_colnames_dict
-                #                                            ),
-                #                                          multiple=TRUE), 
-                #                             tableOutput('similar_pca_table'), 
-                #                              uiOutput('pc_pick_1') %>% withSpinner(color="#0dc5c1"), 
-                #                              uiOutput('pc_pick_2') %>% withSpinner(color="#0dc5c1")
-                #          ), 
-                #          column(
-                #            width = 9, 
-                #            tabsetPanel(
-                #              tabPanel(
-                #                title = "Best Features Based",
-                #                dataTableOutput('similar_players_table') %>% withSpinner(color="#0dc5c1"),  
-                #                plotlyOutput('similar_mds_plot', height = "500px") %>% withSpinner(color="#0dc5c1") ,
-                #                plotlyOutput('similar_pca_plot', height = "500px") %>% withSpinner(color="#0dc5c1")
-                #                ), 
-                #              tabPanel(
-                #                title = "Selected Features Based"
-                #              ), 
-                #              tabPanel(
-                #                title = "All Features Based"
-                #              )
-                #            )
-                #          )
-                #          )
-                #          )
-                # 
-              )),
+              )
+              ),
       tabItem(tabName = "two_player_comparison"), 
       tabItem(tabName = "team_profile")
     ))
