@@ -512,7 +512,10 @@ create_field_plot <-
   ggplot(data = position_coords,
        aes(x = coord1, y = coord2, label = label)) +
 
-      annotate_pitch(colour = "white", alpha = 1, fill = "#5da15c", linewidth = 2) + 
+      annotate_pitch(colour = "white", 
+                     #alpha = 1, 
+                     #linewidth = 2,
+                     fill = "#5da15c" ) + 
       theme_pitch(aspect_ratio = NULL) +
       geom_point(color = "#5da15c") +
       geom_text(size=8) +
