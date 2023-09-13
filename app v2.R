@@ -2236,15 +2236,6 @@ server_side <-
           PRETTY_NAME_FEATURES = input$feature
           )
       )
-    
-      output$similar_players_table_2 <- 
-        renderDataTable({
-          similar_players_table(
-            DATA_W_DISTANCE = similar_players_euclid_dist_data_df_2() , 
-            TOP_PLAYERS_SHOW = input$target_sim_players_2
-          )
-        })
-          
 
       similar_players_euclid_dist_data_df_2 <- 
         reactive(
@@ -2256,6 +2247,14 @@ server_side <-
             FEATURES_LIST = selected_features()
           )
         )
+    
+      output$similar_players_table_2 <- 
+        renderDataTable({
+          similar_players_table(
+            DATA_W_DISTANCE = similar_players_euclid_dist_data_df_2() , 
+            TOP_PLAYERS_SHOW = input$target_sim_players_2
+          )
+        })
       
       data_from_pca_2 <- 
         reactive(
@@ -2323,7 +2322,7 @@ server_side <-
       
       simialr_players_df_2 <- 
         reactive(
-          similar_players_euclid_dist_data_df()  %>% 
+          similar_players_euclid_dist_data_df_2()  %>% 
             arrange(scaled_dist) %>% 
             head(input$target_sim_players) 
         )
@@ -2339,6 +2338,120 @@ server_side <-
               Y_AXIS_PC = input$select_pc_plot_2_2
               )
         )
+      
+    
+    ############
+    # similar players based on all features in the data set
+
+      all_numeric_features <- 
+        reactive(
+          setdiff(
+              colnames(reactive_player_summary_df()), 
+              c("summary_player" ,"summary_min",
+                "team_name", "league_name", 
+                "comb_positions", "summary_age",
+                "games_played", "season")
+            )
+        )
+      
+      similar_players_euclid_dist_data_df_3 <- 
+        reactive(
+          similar_players_euclid_dist_data(
+            REACTIVE_DATA = reactive_player_summary_df(), 
+            TARGET_PLAYER = input$player_typed_name, 
+            TARGET_PLAYER_TEAM = input$select_team_same_name, 
+            SEASON = input$select_season, 
+            FEATURES_LIST = all_numeric_features()
+          )
+        )
+    
+      output$similar_players_table_3 <- 
+        renderDataTable({
+          similar_players_table(
+            DATA_W_DISTANCE = similar_players_euclid_dist_data_df_3() , 
+            TOP_PLAYERS_SHOW = input$target_sim_players_3
+          )
+        })
+      
+      data_from_pca_3 <- 
+        reactive(
+          pca_results_data(
+            REACTIVE_DATA = similar_players_euclid_dist_data_df_3(), 
+            TARGET_PLAYER = input$player_typed_name, 
+            TARGET_PLAYER_TEAM = input$select_team_same_name, 
+            SEASON = input$select_season,
+            FEATURES_LIST = all_numeric_features()
+          )
+        )
+      
+      
+      pca_res_3 <- 
+        reactive(
+          pca_results(
+            REACTIVE_DATA = reactive_player_summary_df(), 
+            TARGET_PLAYER = input$player_typed_name, 
+            TARGET_PLAYER_TEAM = input$select_team_same_name, 
+            SEASON = input$select_season, 
+            FEATURES_LIST = all_numeric_features()
+          )
+        )
+      
+      output$similar_pca_table_3 <- 
+        renderTable(
+          similar_pca_table(
+            PCA_RES = pca_res_3()
+          )
+        )
+      
+       output$pc_pick_1_3 <- 
+            renderUI({
+              
+              selectInput(inputId = 'select_pc_plot_1_3', 
+                           label = "Pick a PC for X-axis", 
+                           choices = colnames(data_from_pca_3())[grep("PC", colnames(data_from_pca_3()))], 
+                           selected = colnames(data_from_pca_3())[grep("PC", colnames(data_from_pca_3()))][1])
+          })
+    
+       output$pc_pick_2_3 <- 
+            renderUI({
+              
+              selectInput(inputId = 'select_pc_plot_2_3', 
+                           label = "Pick a PC for Y-axis", 
+                           choices = colnames(data_from_pca_3())[grep("PC", colnames(data_from_pca_3()))], 
+                           selected = colnames(data_from_pca_3())[grep("PC", colnames(data_from_pca_3()))][2])
+          })
+       
+       output$similar_players_table_3 <- 
+        renderDataTable({
+          similar_players_table(
+            DATA_W_DISTANCE = similar_players_euclid_dist_data_df_3() , 
+            TOP_PLAYERS_SHOW = input$target_sim_players_3
+          )
+          
+        })
+      
+      simialr_players_df_3 <- 
+        reactive(
+          similar_players_euclid_dist_data_df_3()  %>% 
+            arrange(scaled_dist) %>% 
+            head(input$target_sim_players_3) 
+        )
+      
+      output$similar_pca_plot_3 <-
+        renderPlotly(
+          similar_pca_plot(
+              REACTIVE_PCA_DF = data_from_pca_3(),
+              PLAYER = input$player_typed_name,
+              TEAM = input$select_team_same_name,
+              SIMILAR_PLAYERS = simialr_players_df_3(),
+              X_AXIS_PC = input$select_pc_plot_1_3, 
+              Y_AXIS_PC = input$select_pc_plot_2_3
+              )
+        )
+      
+    
+      
+      
   }
 
                                             ########################
@@ -2779,7 +2892,7 @@ body <-
                                                          choices=
                                                            setdiff(  
                                                              data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(),
-                                                             c("Nationality", "Position",remove_colnames_dict)
+                                                             c("Nationality", "Position", "Postion", remove_colnames_dict)
                                                            ),
                                                          multiple=TRUE), 
                                             
@@ -2798,19 +2911,25 @@ body <-
                     
                     tabPanel(
                       title = "All Features Based",
-                      
-                      column(
-                        width = 3, 
+                      fluidPage(
+                        column(
+                          width = 3, 
                            numericInput(inputId = 'target_sim_players_3',
                                                               label = "Number of Similar Players to Find",
                                                               min = 0,
                                                               max = 1000,
-                                                              value = 30)
-                        
-                      ), 
-                      
-                      column(
-                        width = 9
+                                                              value = 30),
+                                            
+                                            tableOutput('similar_pca_table_3'), 
+                                             uiOutput('pc_pick_1_3') %>% withSpinner(color="#0dc5c1"), 
+                                             uiOutput('pc_pick_2_3') %>% withSpinner(color="#0dc5c1")
+                          
+                        ), 
+                        column(
+                          width = 9, 
+                          dataTableOutput('similar_players_table_3') %>% withSpinner(color="#0dc5c1"),  
+                           plotlyOutput('similar_pca_plot_3', height = "500px") %>% withSpinner(color="#0dc5c1")
+                        )
                       )
                     )
                   )       
