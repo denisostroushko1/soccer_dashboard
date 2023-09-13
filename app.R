@@ -22,6 +22,7 @@ combine_strings <- function(input_strings) {
     parsed_data <- c(parsed_data, parsed)
   }
   
+  
   # Combine and aggregate the values
   combined <- do.call(c, parsed_data)
   aggregated <- aggregate(values ~ ind, data = stack(combined), sum)
@@ -30,6 +31,19 @@ combine_strings <- function(input_strings) {
   combined_string <- paste(aggregated$ind, "(", aggregated$values, ")", collapse = ", ")
   
   return(combined_string)
+}
+
+
+vline <- function(color = "red", x0, x1, y0, y1) {
+  list(
+    type = "line", 
+    x0 = x0, 
+    x1 = x1, 
+    yref = "paper",
+    y0 = y0, 
+    y1 = y1, 
+    line = list(color = color, dash="dash")
+  )
 }
 
                                             ####################################
@@ -695,6 +709,7 @@ average_quantiles_data <-
         ) %>% 
         summarize(
           mean = mean(`Percentile per 90`), 
+          median = median(`Percentile per 90`), 
           sd = sd(`Percentile per 90`), 
           n = n()
         ) 
@@ -782,6 +797,12 @@ radar_quantiles_chart <-
   function(
     REACTIVE_DATA
   ){
+    
+    add_closed_trace <- function(p, r, theta, ...) 
+        {
+          plotly::add_trace(p, r = c(r, r[1]), theta = c(theta, theta[1]), ...)
+    }
+    
     with(REACTIVE_DATA, 
            
       REACTIVE_DATA %>% 
@@ -800,39 +821,62 @@ radar_quantiles_chart <-
           se = sd / sqrt(n)
         ) %>% 
         
-        plot_ly(
-          type = "scatterpolar", 
-          mode = "markers", 
-          fill = 'toself', 
-          fillcolor = "#64ed9b",
-          
-          r = ~mean, 
-          theta = ~short_descr, 
-          
-          text = paste0(
-            "Category: ", `Stat. Category`, 
-            "<br>Average Quantile: ", round(mean, 2), 
-            "<br>Standard Deviation: ", round(sd, 2)
-          ), 
-          hoverinfo = 'text', 
-          
-          opacity = 0.5,
-          
-          marker = list(size = 10, color = "black"), 
-          
-          name = " "
-          
-        ) %>% 
-        layout(
-          polar = list(
-            radialaxis = list(
-              visible = T,
-              range = c(0,1)
-            )
-          ),
-          margin = list(l = 25, r = 25, t = 50, b = 25), 
-          title = "Average Quantiles"
-        )
+        plot_ly() %>% 
+        
+          add_trace(
+            type = "scatterpolar", 
+            mode = "markers", 
+            fill = 'toself', 
+             
+            name = "Average Values", 
+            fillcolor = "#64ed9b",
+            opacity = 0.5,
+            marker = list(size = 10, color = "#357849"), 
+            
+            r = ~mean, 
+            theta = ~short_descr, 
+            
+            text = paste0(
+              "Category: ", `Stat. Category`, 
+              "<br>Average Quantile: ", round(mean, 2), 
+              "<br>Standard Deviation: ", round(sd, 2)
+            ), 
+            hoverinfo = 'text'
+            
+          ) %>% 
+
+          add_trace(
+            type = "scatterpolar",
+            mode = "markers",
+       #     fill = 'toself',
+
+            name = "Median Values",
+         #   fillcolor = "#59b9d9",
+            marker = list(size = 7, color = "red"),
+            opacity = 0.75,
+
+            r = ~ median,  
+            theta = ~short_descr,
+
+            text = paste0(
+              "Category: ", c(`Stat. Category`), 
+              "<br>Median Quantile: ", round(median, 2)
+            ),
+            hoverinfo = 'text'
+
+          ) %>%
+        
+          layout(
+            polar = list(
+              radialaxis = list(
+                visible = T,
+                range = c(0,1)
+              )
+            ),
+         #   margin = list(l = 25, r = 25, t = 50, b = 25), 
+            title = "Quantile Summary Statistics",
+            legend = list(orientation = 'h')
+          )
       
     )
   }
@@ -970,6 +1014,7 @@ all_features_quantiles_boxplot <-
             line = list(color = "red", dash = "dash", width = 2)
           ) %>% 
            layout(
+             yaxis = list(range = c(0,1)), 
              xaxis = list(showticklabels = FALSE, title = ""), 
              legend = list(orientation = 'h'), 
              title = "Distribtuion of Quantiles"
@@ -981,18 +1026,33 @@ all_features_quantiles_boxplot <-
 bar_plot_ranked_features <- 
   function(
     REACTIVE_DATA, 
-    FEATURES_TO_SHOW){
+    FEATURES_TO_SHOW,
+    CUTOFF, 
+    FEATURES_OPTION, 
+    FEATURES_SELECTED_LIST){
     
-    
-         REACTIVE_DATA %>% 
-           arrange(
-             -`Percentile per 90`
-           ) %>% 
-      
-          head(FEATURES_TO_SHOW) -> plot_df 
+          if(
+             FEATURES_OPTION == "Best Ranked Features"
+          ){
+            REACTIVE_DATA %>% 
+               arrange(
+                 -`Percentile per 90`
+               ) %>% 
+          
+              head(FEATURES_TO_SHOW) -> plot_df 
+        
+          }else{
+            
+            REACTIVE_DATA %>% 
+              filter(`Stat. Name` %in% FEATURES_SELECTED_LIST) %>% 
+               arrange(
+                 -`Percentile per 90`
+               ) -> plot_df
+          }
+          
     
           plot_df$`Stat. Name` <- factor(plot_df$`Stat. Name`, levels = plot_df$`Stat. Name`)
-          
+              
           plot_df %>% 
            plot_ly() %>% 
             add_trace(
@@ -1012,10 +1072,24 @@ bar_plot_ranked_features <-
               hoverinfo = 'text'
             ) %>% 
            
+          add_trace(
+            type = "scatter", 
+            mode = "lines",
+            x = c(
+              plot_df$`Stat. Name`[1], 
+              plot_df$`Stat. Name`[nrow(plot_df)]
+            ),
+            y = c(CUTOFF/100, CUTOFF/100), 
+            showlegend = T,  
+            # x0 = x_t, x1 = x_t, 
+            # y0 = 0, y1 = 1, 
+            line = list(color = "black", dash = "dash", width = 2), 
+            name = paste0(CUTOFF, "th Percentiles")
+          ) %>% 
+            
            layout(xaxis = list(title = ""), 
-                  yaxis = list(title = ""), 
-                  legend = list(orientation = "h", x = 0, y = 1.2),
-                  margin = list(l = 25, r = 25, t = 50, b = 25)
+                  yaxis = list(title = "", range = c(0,1)), 
+                  legend = list(orientation = "h", x = 0, y = 1.5)
                   )
          
     
@@ -2107,7 +2181,10 @@ server_side <-
         renderPlotly(
           bar_plot_ranked_features(
             REACTIVE_DATA = all_features_ranked_w_names(), 
-            FEATURES_TO_SHOW = input$show_features_plotly)
+            FEATURES_TO_SHOW = input$show_features_plotly,
+            CUTOFF = input$quantile_cutoffs, 
+            FEATURES_OPTION = input$barplot_option,
+            FEATURES_SELECTED_LIST = input$barplot_features)
         )
       
       output$one_feature_histogram <- 
@@ -2805,16 +2882,47 @@ body <-
                 ), 
                 
                 fluidRow(
-                  column(width = 4, 
+                  column(width = 3, 
                          box(width = 12, 
                           numericInput(inputId = 'show_features_plotly',
                                        label  = "Number of Top Features To Show",
                                        min = 5,
                                        max = 100,
-                                       value = 50)
-                         )), 
-                  column(width = 4),
-                  column(width = 4, 
+                                       value = 50))
+                         ),
+                  column(width = 3, 
+                         box(width = 12, 
+                          radioButtons("barplot_option", 
+                                       "Barplot Options:",
+                                       choices = c("Best Ranked Features", "Selected Features"),
+                                       selected = "Best Ranked Features")
+                         )
+                         ), 
+                  
+                  column(width = 3, 
+                         box(width = 12, collapsible = T,collapsed = TRUE, 
+                             selectInput(inputId="barplot_features",
+                                                         selected = c(
+                                                                      'Goals'
+                                                                      ,'Expected Goals'
+                                                                      ,'Passes Completed'
+                                                                      ,'Total Passing Distance'
+                                                                      ,'Number of players tackled'
+                                                                      ,'Dribbles Challenged'
+                                                                      ,'Progressive Carries'
+                                                                      ,'Miscontrols'
+                                                                      ),
+                                                         label="Choose Variables for Table",
+                                                         choices=
+                                                           setdiff(  
+                                                             data_dict %>% select(Pretty.Name.from.FBref) %>% unlist(),
+                                                             c("Nationality", "Position", "Postion", remove_colnames_dict)
+                                                           ),
+                                                         multiple=TRUE)
+                             )
+                         )
+                  , 
+                  column(width = 3, 
                          box(width = 12, 
                              selectInput(inputId="hist_feature", 
                                      selected = 'Expected Goals',
