@@ -555,6 +555,84 @@ add_player_to_player_profile_reactive_df <-
     return(target_df)
   }
 
+convert_player_profile_reactive_df_to_per_90 <- 
+  function(
+    REACTIVE_DATA
+  ){
+    REACTIVE_DATA %>% 
+        mutate_at(
+          vars( 
+            all_of(
+              setdiff(
+                colnames(.), 
+                c(remove_colnames, "comb_positions")
+                )
+              )
+            ), 
+          ~ . / summary_min * 90
+        ) -> f 
+    
+    return(f)
+  }
+
+convert_player_per_90_to_percentiles <- 
+  function(
+    REACTIVE_DATA){
+    
+    REACTIVE_DATA %>% 
+      mutate_at(
+          vars( 
+            all_of(
+              setdiff(
+                colnames(.), 
+                c(remove_colnames, "comb_positions")
+                )
+              )
+            ), 
+            ~ (
+              rank(.)/length(.) - # compute percentile
+                min(rank(.)/length(.))
+              )/ # take away the min - we will scale percentiles from actual range of, say, .18 to 1, to 0-1 scale 
+              (
+                max(rank(.)/length(.)) - min(rank(.)/length(.))
+                  ), 
+          
+            ties.method = "min"
+        ) -> f
+    
+    return(f)
+  }
+
+pull_statistics_row_for_a_player <- 
+  function(
+    REACTIVE_DATA, 
+    TARGET_PLAYER = NA, 
+    TARGET_PLAYER_SEASON = NA, 
+    TARGET_PLAYER_TEAM = NA, 
+    TARGET_PLAYER_LEAGUE = NA
+  ){
+    REACTIVE_DATA %>% 
+      filter(
+          summary_player %in% TARGET_PLAYER, 
+          season %in% TARGET_PLAYER_SEASON, 
+          team_name %in% TARGET_PLAYER_TEAM, 
+          league_name %in% TARGET_PLAYER_LEAGUE
+        )  %>% 
+      select(-all_of(
+        setdiff(
+          c(remove_colnames, 'comb_positions'), 
+          c('all_positions',  'dominant_position')
+        )
+        )) %>% 
+      t() %>% data.frame()-> res 
+    
+    res$variable <- rownames(res)
+    colnames(res) <- c("value", "variable")
+    rownames(res) <- NULL
+    return(res)
+    
+  }
+
 brief_summary_and_pool <- 
   function(
     REACTIVE_DATA, 
@@ -665,7 +743,7 @@ create_field_plot <-
     coord_flip()
   }
 
-percentile_data_frame_one_player <- 
+percentile_data_frame_one_player_old <- 
   function(
     DATA, 
     PLAYER, 
@@ -757,6 +835,45 @@ percentile_data_frame_one_player <-
     ) 
     
     return(f)
+  }
+
+percentile_data_frame_one_player <- 
+  function(
+    RAW_DATA, 
+    PER_90_DATA, 
+    PERCENTILE_DATA
+  ){
+      
+    RAW_DATA %>%
+      rename(player_stat = value,
+             names = variable) %>%
+      select(names, player_stat) -> raw
+    
+    
+    PER_90_DATA %>%
+      rename(
+         player_stat_per_90 = value,
+         names = variable) %>%
+      select(names, player_stat_per_90) -> per_90
+    
+    PERCENTILE_DATA %>%
+      rename(
+         percentiles_per_90 = value,
+         names = variable) %>%
+      select(names, percentiles_per_90) -> percentiles
+    res <- 
+      inner_join(
+        raw, 
+        inner_join(
+          per_90, 
+          percentiles, 
+          by = "names"
+        ),
+        by = 'names'
+      )
+    
+    return(res)
+        
   }
 
 all_features_ranked <- 
@@ -2138,7 +2255,58 @@ server_side <-
               COMP_MINUTES_END = input$minutes_to_limit[2]
             )
         )
+      
+      reactive_player_summary_df_per_90 <- 
+        reactive(
+          convert_player_profile_reactive_df_to_per_90(
+            REACTIVE_DATA = reactive_player_summary_df()
+          )
+        )
+      
+      reactive_player_summary_percentiles <- 
+        reactive(
+          convert_player_per_90_to_percentiles(
+            REACTIVE_DATA = reactive_player_summary_df_per_90()
+          )
+        )
           
+      
+      # pull target player - player profile - row with raw values of aggregated statistics 
+      
+      summary_player_raw_data <- 
+        reactive(
+          pull_statistics_row_for_a_player(
+            REACTIVE_DATA = reactive_player_summary_df(), 
+              TARGET_PLAYER = input$player_typed_name, 
+              TARGET_PLAYER_SEASON = input$select_season, 
+              TARGET_PLAYER_TEAM = input$select_team_same_name , 
+              TARGET_PLAYER_LEAGUE = input$select_league
+            )
+        )
+      
+      summary_player_per_90_data <- 
+        reactive(
+          pull_statistics_row_for_a_player(
+            REACTIVE_DATA = reactive_player_summary_df_per_90(), 
+              TARGET_PLAYER = input$player_typed_name, 
+              TARGET_PLAYER_SEASON = input$select_season, 
+              TARGET_PLAYER_TEAM = input$select_team_same_name , 
+              TARGET_PLAYER_LEAGUE = input$select_league
+            )
+        )
+      
+      summary_player_percentiles_data <- 
+        reactive(
+          pull_statistics_row_for_a_player(
+            REACTIVE_DATA = reactive_player_summary_percentiles(), 
+              TARGET_PLAYER = input$player_typed_name, 
+              TARGET_PLAYER_SEASON = input$select_season, 
+              TARGET_PLAYER_TEAM = input$select_team_same_name , 
+              TARGET_PLAYER_LEAGUE = input$select_league
+            )
+        )
+      
+      
       output$brief_summary_and_pool <- 
         renderTable(
           brief_summary_and_pool(
@@ -2158,14 +2326,48 @@ server_side <-
             )
         )
 
+      # OLD DEPRICATED VERSION OF OBTAINING PERCENTILES PER 90 FOR A SINGLE PLAYER 
+      # percentile_data_frame_one_player_df <-
+      #   reactive(
+      #     percentile_data_frame_one_player(
+      #       DATA = reactive_player_summary_df(),
+      #       PLAYER = input$player_typed_name,
+      #       TEAM = input$select_team_same_name
+      #     ))
       percentile_data_frame_one_player_df <-
         reactive(
           percentile_data_frame_one_player(
-            DATA = reactive_player_summary_df(),
-            PLAYER = input$player_typed_name,
-            TEAM = input$select_team_same_name
+            RAW_DATA = summary_player_raw_data(), 
+            PER_90_DATA = summary_player_per_90_data(), 
+            PERCENTILE_DATA =  summary_player_percentiles_data()
           ))
-
+      
+      
+      output$target_percentiles <- 
+        renderDataTable(
+          percentile_data_frame_one_player_df() %>% 
+            datatable(
+              options = list(
+                scrollX = T,
+                rownames = NULL,
+                pageLength = 5
+                )
+              )
+        )
+      
+      output$replicate_percentiles <- 
+        renderDataTable(
+        #  summary_player_raw_data() %>% 
+          percentile_data_frame_one_player_df_2()  %>% 
+            datatable(
+              options = list(
+                scrollX = T,
+                rownames = NULL,
+                pageLength = 5
+                )
+              )
+        )
+      
       all_features_ranked_w_names <- 
         reactive(
           all_features_ranked(
@@ -2765,6 +2967,7 @@ sidebar <-
     width = 250, 
     sidebarMenu(
       menuItem("Introduction", tabName = "intro")
+      ,menuItem("Local Tests", tabName = 'local_test')
       ,menuItem("Helper Page", tabName = "helper")
       ,menuItem("Player Profile", tabName = "player_profile")
       ,menuItem("Two Player Comparison", tabName = "two_player_comparison")
@@ -2882,6 +3085,11 @@ body <-
                  <p style='font-size: 18px; font-weight: bold;'>Follow instructions and aqua-colored boxes for extra guidance. Have fun! </p>
                 "
               )),
+      tabItem(tabName = "local_test",
+              fluidPage(
+                dataTableOutput('target_percentiles'),
+                dataTableOutput('replicate_percentiles')
+              )), 
       tabItem(tabName = "helper", 
                     tabsetPanel(
                       tabPanel(title = "Look Up Player Name", 
