@@ -435,6 +435,125 @@ player_profile_reactive_df <-
     
   }
   
+add_player_to_player_profile_reactive_df <- 
+  function(
+    RAW_DATA = dash_df, 
+    AGGREGATE_FLAG = NA,
+    TARGET_PLAYER = NA, 
+    TARGET_PLAYER_SEASON = NA, 
+    TARGET_PLAYER_TEAM = NA, 
+    TARGET_PLAYER_LEAGUE = NA
+  ){
+    if(AGGREGATE_FLAG == "No"){
+      
+      # get a row of data for the player we want to summarize and compare with others 
+      RAW_DATA %>% 
+        filter(
+          summary_player %in% TARGET_PLAYER, 
+          season %in% TARGET_PLAYER_SEASON, 
+          team_name %in% TARGET_PLAYER_TEAM,
+          league_name %in% TARGET_PLAYER_LEAGUE
+        ) %>% 
+        select(-all_of(remove_colnames_keep_games_mins)) -> target_df
+
+      target_df <-
+        cbind(
+
+          RAW_DATA %>%
+            filter(
+              summary_player %in% TARGET_PLAYER,
+              season %in% TARGET_PLAYER_SEASON,
+              team_name %in% TARGET_PLAYER_TEAM,
+              league_name %in% TARGET_PLAYER_LEAGUE
+            ) %>%
+            select(summary_player, league_name, team_name, season, summary_age, all_positions) ,
+          target_df
+        )
+    }else{
+      
+      # RAW_DATA %>% 
+      #   filter(
+      #     summary_player %in% TARGET_PLAYER, 
+      #     season %in% TARGET_PLAYER_SEASON, 
+      #     team_name %in% TARGET_PLAYER_TEAM
+      #   ) %>% 
+      #   select(-all_of( 
+      #     setdiff(remove_colnames_keep_games_mins, "summary_age")
+      #     )) -> target_df
+      
+      RAW_DATA %>% 
+        filter(
+          summary_player %in% TARGET_PLAYER, 
+          season %in% TARGET_PLAYER_SEASON, 
+          team_name %in% TARGET_PLAYER_TEAM
+        ) %>% 
+        select(league_name) -> leagues
+      
+      player_home_leagues <- 
+        leagues %>% 
+        filter(
+          !(league_name %in% c(
+                     "UEFA Champions League", 
+                     "Copa Libertadores de América", 
+                     "UEFA Europa Conference League", 
+                     "UEFA Europa League"
+                   )
+            )
+        ) %>% select(league_name)
+        
+      domestic <- 
+        if(nrow(player_home_leagues) == 0){leagues %>% select(league_name) %>% unique() %>% unlist()}else{
+          player_home_leagues %>% unique() %>% unlist()
+        }
+      
+      RAW_DATA %>% 
+        filter(
+          summary_player %in% TARGET_PLAYER, 
+          season %in% TARGET_PLAYER_SEASON, 
+          team_name %in% TARGET_PLAYER_TEAM
+        )  %>% 
+        
+        select(-all_of( 
+          # setdiff(remove_colnames_keep_games_mins, "summary_age")
+          remove_colnames_keep_games_mins
+          )) %>%
+        
+        colSums() %>% 
+        t() %>% 
+        data.frame() -> target_df
+      
+      age <- RAW_DATA %>% 
+        filter(
+          summary_player %in% TARGET_PLAYER, 
+          season %in% TARGET_PLAYER_SEASON, 
+          team_name %in% TARGET_PLAYER_TEAM
+        )  %>% select(summary_age) %>% unique() %>% unlist()
+      
+      target_df <- 
+        cbind(
+          target_df %>% mutate(league_name = domestic, 
+                               summary_age = age), 
+                         
+          RAW_DATA %>% 
+            filter(
+              summary_player %in% TARGET_PLAYER & 
+              season %in% TARGET_PLAYER_SEASON & 
+              team_name %in% TARGET_PLAYER_TEAM
+            )  %>% select(summary_player, season, team_name, all_positions) %>% 
+            group_by(summary_player, team_name, season) %>% 
+            mutate(
+              comb_positions = combine_strings(all_positions)
+            )  %>% select(comb_positions) %>% unique()
+            )
+
+      target_df <-
+        target_df %>% select(summary_player,	season,	team_name, league_name, summary_age, comb_positions, everything()) 
+
+    }
+    
+    return(target_df)
+  }
+
 brief_summary_and_pool <- 
   function(
     REACTIVE_DATA, 
@@ -2529,6 +2648,111 @@ server_side <-
               )
         )
       
+      
+      ####################
+      ## Player Comparison - parameters of the second player 
+
+    selected_player_profile_name_2 <- 
+      eventReactive(
+        input$go_sec_player, {
+          input$second_player_typed_name
+        }
+        )
+
+    player_seasons_2 <- 
+        reactive(dash_df[summary_player %in% selected_player_profile_name_2() ] %>% 
+                 select(season) %>% unique() %>% unlist() %>% 
+                     set_names(NULL))
+    
+      
+      output$picked_player_available_seasons_2 <- 
+            renderUI({
+              
+              selectInput(inputId = 'select_season_2', 
+                           label = "Select a Season", 
+                           choices = player_seasons_2(),  
+                           selected = 
+                            dash_df[dash_df$summary_player == 
+                                      selected_player_profile_name_2()]$season %>% tail(1) %>% unlist()
+                          )
+          })
+    
+      same_name_teams_2 <- 
+        reactive(dash_df[summary_player %in% selected_player_profile_name_2() & 
+                           season == input$select_season_2 ] %>% 
+                 select(team_name) %>% unique() %>% unlist() %>% sort() %>% 
+                     set_names(NULL))
+    
+      output$same_name_team_picker_2 <- 
+            renderUI({
+              
+              selectInput(inputId = 'select_team_same_name_2', 
+                           label = "Pick a team. Likely only 1 available", 
+                           choices = same_name_teams_2(), 
+                           selected = dash_df[dash_df$summary_player == 
+                                                selected_player_profile_name_2() ][1,]$team_name
+                          )
+          })
+     
+    
+      same_name_leagues_2 <- 
+        reactive(dash_df[summary_player %in% selected_player_profile_name_2() & 
+                           season == input$select_season_2] %>% 
+                 select(league_name) %>% unique() %>% unlist() %>% sort() %>% 
+                     set_names(NULL))
+    
+      output$same_name_leagues_picker_2 <- 
+            renderUI({
+              
+              selectInput(inputId = 'select_league_2', 
+                           label = "Select Competiton", 
+                           choices = same_name_leagues_2(), 
+                           selected = dash_df[dash_df$summary_player == 
+                                                selected_player_profile_name_2()][1,]$league_name
+                          )
+          })
+      
+      output$table_w_names_second_player <- 
+            renderDataTable({
+              dash_df[dash_df$summary_player == selected_player_profile_name_2() ] %>% 
+                select(summary_age, season, league_name, team_name, all_positions) %>% 
+                arrange(desc(season), league_name, team_name, all_positions) %>% 
+                mutate(summary_age = as.integer(summary_age)) %>% 
+                setNames(c("Age", "Season", "Competition", "Team", "Positions")) %>% 
+                datatable(options = list(iDisplayLength = 5,
+                                         scrollX = TRUE,
+                                         scrollY = TRUE
+                                         ), 
+                          rownames = F)
+            })
+      
+      ###############
+      # two player comparison - profile comparisons 
+      
+      extra_player_df <- 
+        reactive(
+          add_player_to_player_profile_reactive_df(
+            RAW_DATA = dash_df, 
+            AGGREGATE_FLAG = input$league_cup_combine_2,
+            TARGET_PLAYER = input$second_player_typed_name, 
+            TARGET_PLAYER_SEASON = input$select_season_2, 
+            TARGET_PLAYER_TEAM = input$select_team_same_name_2, 
+            TARGET_PLAYER_LEAGUE = input$select_league_2
+          )
+        )
+      
+      output$example <- 
+        renderDataTable(
+          extra_player_df() %>% 
+          datatable(
+            options = list(
+              scrollX = T,
+              rownames = NULL,
+              pageLength = 5
+              )
+            )
+          )
+      
     
       
       
@@ -3048,7 +3272,49 @@ body <-
                 )
               )
               ),
-      tabItem(tabName = "two_player_comparison"), 
+      tabItem(
+        tabName = "two_player_comparison",
+        tabsetPanel(
+          tabPanel(
+            title = "Select Second Player", 
+            fluidPage(
+              box(width = 12, 
+                column(
+                  width = 3, 
+                  actionButton(inputId = "go_sec_player", 
+                                label = "Find Teams and Seasons", 
+                                width = "200px")
+                ), 
+                column(
+                  width = 3,
+                  textInput(inputId = 'second_player_typed_name', 
+                             label = "Type in Player Name", 
+                             value = 'Lionel Messi'),
+                                              
+                  uiOutput('picked_player_available_seasons_2') %>% withSpinner(color="#0dc5c1"), 
+                  uiOutput('same_name_team_picker_2') %>% withSpinner(color="#0dc5c1"), 
+                  uiOutput('same_name_leagues_picker_2') %>% withSpinner(color="#0dc5c1"), 
+              
+                  radioButtons(inputId = "league_cup_combine_2", 
+                               label = "Combine League and Cups?", 
+                               choices = c("Yes", "No"), 
+                               selected = "No")
+                ), 
+                column(
+                  width = 6, 
+                  dataTableOutput('table_w_names_second_player')
+                )
+              )
+            )
+          ), 
+          tabPanel(
+            title = "Comparison Report", 
+            fluidPage(
+              dataTableOutput('example')
+            )
+          )
+        )
+        ), 
       tabItem(tabName = "team_profile")
     ))
 ########################################################################################################################
