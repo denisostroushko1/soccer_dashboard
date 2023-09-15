@@ -468,7 +468,8 @@ add_player_to_player_profile_reactive_df <-
             ) %>%
             select(summary_player, league_name, team_name, season, summary_age, all_positions) ,
           target_df
-        )
+        ) %>% 
+        rename(comb_positions = all_positions)
     }else{
       
       # RAW_DATA %>% 
@@ -751,7 +752,6 @@ percentile_data_frame_one_player <-
     f <- data.frame(
       names, 
       player_stat, 
-      percentiles,
       player_stat_per_90, 
       percentiles_per_90
     ) 
@@ -792,14 +792,13 @@ all_features_ranked <-
             stat_cat, 
             descr, 
             player_stat, 
-            percentiles,
             player_stat_per_90, 
             percentiles_per_90) -> f
       
 #    colnames(f) <- c("Descr", "st", "p_st", "st_90", "p_st_90")
     
     colnames(f) <- c(
-      "names", "Stat. Category","Stat. Name", "Aggregate Per Season", "Percentile", "Scaled Per 90 Minutes", "Percentile per 90")
+      "names", "Stat. Category","Stat. Name", "Aggregate Per Season", "Scaled Per 90 Minutes", "Percentile per 90")
     
     return(f)
   }
@@ -1203,7 +1202,9 @@ bar_plot_ranked_features <-
             # x0 = x_t, x1 = x_t, 
             # y0 = 0, y1 = 1, 
             line = list(color = "black", dash = "dash", width = 2), 
-            name = paste0(CUTOFF, "th Percentiles")
+            name = paste0(CUTOFF, "th Percentiles"), 
+            text = '', 
+            hoverinfo = 'text'
           ) %>% 
             
            layout(xaxis = list(title = ""), 
@@ -2729,7 +2730,7 @@ server_side <-
       ###############
       # two player comparison - profile comparisons 
       
-      extra_player_df <- 
+      extra_player_df <-  # one data point of the second player to compare with the main player 
         reactive(
           add_player_to_player_profile_reactive_df(
             RAW_DATA = dash_df, 
@@ -2741,17 +2742,14 @@ server_side <-
           )
         )
       
-      output$example <- 
-        renderDataTable(
-          extra_player_df() %>% 
-          datatable(
-            options = list(
-              scrollX = T,
-              rownames = NULL,
-              pageLength = 5
-              )
-            )
+      two_player_comp_full_df <- 
+        reactive(
+          rbind(
+            extra_player_df(), 
+            reactive_player_summary_df()
           )
+        ) # these data are ready to be used now for viz 
+      
       
     
       
@@ -3310,7 +3308,9 @@ body <-
           tabPanel(
             title = "Comparison Report", 
             fluidPage(
-              dataTableOutput('example')
+              dataTableOutput('example'),
+              
+              dataTableOutput('example2')
             )
           )
         )
