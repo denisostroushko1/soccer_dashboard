@@ -272,6 +272,11 @@ player_profile_reactive_df <-
           gsub("\\d+", incremented_value, x)
         }
         
+        
+        # This is a crucial modification to the data. 
+          # when we combine multiple lines within the same season for a player, we combine a string with their positions 
+          # a by-product of that action is a modification of positions string from FW (25), RW (7) to FW ( 25 ), RW ( 7 )
+          # so, we need to make sure that regardless of aggregation, we have the same format 
         target_df <- 
           rbind(target_df, 
                 comp_df) %>% 
@@ -444,6 +449,7 @@ add_player_to_player_profile_reactive_df <-
     TARGET_PLAYER_TEAM = NA, 
     TARGET_PLAYER_LEAGUE = NA
   ){
+    
     if(AGGREGATE_FLAG == "No"){
       
       # get a row of data for the player we want to summarize and compare with others 
@@ -470,6 +476,12 @@ add_player_to_player_profile_reactive_df <-
           target_df
         ) %>% 
         rename(comb_positions = all_positions)
+      
+      target_df <- 
+        target_df %>% 
+        mutate(
+          comb_positions =  gsub("(\\w)\\((\\d+)\\)", "\\1 ( \\2 )", comb_positions)
+        ) 
     }else{
       
       # RAW_DATA %>% 
@@ -528,7 +540,7 @@ add_player_to_player_profile_reactive_df <-
           summary_player %in% TARGET_PLAYER, 
           season %in% TARGET_PLAYER_SEASON, 
           team_name %in% TARGET_PLAYER_TEAM
-        )  %>% select(summary_age) %>% unique() %>% unlist()
+        )  %>% select(summary_age) %>% unique() %>% head(1) %>% unlist()
       
       target_df <- 
         cbind(
@@ -725,8 +737,6 @@ create_field_plot <-
        aes(x = coord1, y = coord2, label = label)) +
 
       annotate_pitch(colour = "white", 
-                     #alpha = 1, 
-                     #linewidth = 2,
                      fill = "#5da15c" ) + 
       theme_pitch(aspect_ratio = NULL) +
       geom_point(color = "#5da15c") +
@@ -2082,6 +2092,114 @@ similar_mds_plot <-
     
   }
 
+## two -player viz
+two_player_radar_plot <- 
+  function(
+    PERCENTILES_PLAYER_1, 
+    PERCENTILES_PLAYER_2, 
+    
+    NAME_1, 
+    NAME_2
+  ){
+    
+    avg_df1 <- 
+      PERCENTILES_PLAYER_1 %>% 
+      left_join(
+        data_dict %>% rename(names = `Data.Frame.Name`), 
+        by = "names"
+      ) %>% 
+      group_by(stat_cat) %>% 
+      summarise(
+        mean = mean(percentiles_per_90), 
+        median = median(percentiles_per_90), 
+        sd = sd(percentiles_per_90)
+      )   %>% 
+      mutate(
+          short_descr = 
+            case_when(
+              `stat_cat` == "Attacking" ~ "A", 
+              `stat_cat` == "Passing" ~ "P",
+              `stat_cat` == "Pass Type Detail" ~ "P.T.",
+              `stat_cat` == "On The Ball" ~ "OB",
+              `stat_cat` == "Misc" ~ "M",
+              `stat_cat` == "Defensive" ~ "D"
+            )
+      )
+    
+    avg_df2 <- 
+      PERCENTILES_PLAYER_2 %>% 
+      left_join(
+        data_dict %>% rename(names = `Data.Frame.Name`), 
+        by = "names"
+      ) %>% 
+      group_by(stat_cat) %>% 
+      summarise(
+        mean = mean(percentiles_per_90), 
+        median = median(percentiles_per_90), 
+        sd = sd(percentiles_per_90)
+      )  %>% 
+      mutate(
+          short_descr = 
+            case_when(
+              `stat_cat` == "Attacking" ~ "A", 
+              `stat_cat` == "Passing" ~ "P",
+              `stat_cat` == "Pass Type Detail" ~ "P.T.",
+              `stat_cat` == "On The Ball" ~ "OB",
+              `stat_cat` == "Misc" ~ "M",
+              `stat_cat` == "Defensive" ~ "D"
+            )
+      )
+    
+    plot_ly(data = avg_df1, type = 'scatterpolar', mode = 'markers',
+        name = NAME_1, 
+        fill = 'toself', 
+        
+        r = ~mean, 
+        theta = ~short_descr, 
+        text = paste0(
+          "Category: ", avg_df1$stat_cat, 
+          "<br>Average Quantile: ", round(avg_df1$mean, 2),
+          "<br>Median Quantile: ", round(avg_df1$median, 2),
+          "<br>Standard Deviation: ", round(avg_df1$sd, 2)
+        ), 
+        hoverinfo = 'text'
+        ) %>%
+  add_trace(data = avg_df2, type = 'scatterpolar', mode = 'markers',
+            name = NAME_2,  
+            
+            fill = 'toself', 
+            r = ~mean, 
+            theta = ~short_descr, 
+            
+            text = paste0(
+          "Category: ", avg_df2$stat_cat, 
+          "<br>Average Quantile: ", round(avg_df2$mean, 2), 
+          "<br>Median Quantile: ", round(avg_df2$median, 2),
+          "<br>Standard Deviation: ", round(avg_df2$sd, 2)
+            ), 
+            hoverinfo = 'text'
+            
+            ) %>%
+    layout(
+      polar = list(
+        radialaxis = list(
+          visible = TRUE,
+          range = c(0,1)
+          )
+        ),
+      showlegend = TRUE,
+      margin = list(l = 25, r = 25, t = 10, b = 10),
+      legend = list(orientation = 'h')
+    ) %>%
+    config(displayModeBar = FALSE) 
+    
+         #    
+    
+  }
+
+
+
+
                                             ########################
                                             # LOAD UP SERVER SIDE #
                                             ########################
@@ -2307,6 +2425,8 @@ server_side <-
         )
       
       
+      
+      
       output$brief_summary_and_pool <- 
         renderTable(
           brief_summary_and_pool(
@@ -2316,6 +2436,7 @@ server_side <-
           ), 
           hover = T, align = 'c', striped = T, width = "75%"
         )
+      
       output$create_field_plot <- 
         renderPlot(
           create_field_plot(
@@ -2341,32 +2462,6 @@ server_side <-
             PER_90_DATA = summary_player_per_90_data(), 
             PERCENTILE_DATA =  summary_player_percentiles_data()
           ))
-      
-      
-      output$target_percentiles <- 
-        renderDataTable(
-          percentile_data_frame_one_player_df() %>% 
-            datatable(
-              options = list(
-                scrollX = T,
-                rownames = NULL,
-                pageLength = 5
-                )
-              )
-        )
-      
-      output$replicate_percentiles <- 
-        renderDataTable(
-        #  summary_player_raw_data() %>% 
-          percentile_data_frame_one_player_df_2()  %>% 
-            datatable(
-              options = list(
-                scrollX = T,
-                rownames = NULL,
-                pageLength = 5
-                )
-              )
-        )
       
       all_features_ranked_w_names <- 
         reactive(
@@ -2948,11 +3043,147 @@ server_side <-
         reactive(
           rbind(
             extra_player_df(), 
-            reactive_player_summary_df()
+            reactive_player_summary_df() %>% 
+              filter(
+                !(
+                      summary_player == input$second_player_typed_name & 
+                      season == input$select_season_2 & 
+                      team_name == input$select_team_same_name_2 &  
+                      league_name == input$select_league_2
+                )
+              )
           )
         ) # these data are ready to be used now for viz 
       
+      ### turn two player data into the per 90 data 
+      two_player_comp_full_df_per_90 <- 
+        reactive(
+          convert_player_profile_reactive_df_to_per_90(
+            REACTIVE_DATA = two_player_comp_full_df()
+          )
+        )
       
+      two_player_comp_full_percentiles <- 
+        reactive(
+          convert_player_per_90_to_percentiles(
+            REACTIVE_DATA = two_player_comp_full_df_per_90()
+          )
+        )
+      
+      # render text to help a user with navigation 
+      
+      # player 1 for comparison 
+      output$create_field_plot_target_comp <- 
+        renderPlot(
+          create_field_plot(
+            REACTIVE_DATA = two_player_comp_full_df(),
+            TARGET_PLAYER = input$player_typed_name, 
+            TARGET_PLAYER_SEASON = input$select_season,
+            TARGET_PLAYER_TEAM = input$select_team_same_name
+            )
+        )
+      output$create_field_plot_second <- 
+        renderPlot(
+          create_field_plot(
+            REACTIVE_DATA = two_player_comp_full_df(),
+            TARGET_PLAYER = input$second_player_typed_name, 
+            TARGET_PLAYER_SEASON = input$select_season_2,
+            TARGET_PLAYER_TEAM = input$select_team_same_name_2
+            )
+        )
+      
+      ### from raw data, per 90 data, percentiles data pull data for the target player and summary player 
+      summary_player_raw_data_1 <- 
+        reactive(
+          pull_statistics_row_for_a_player(
+            REACTIVE_DATA = two_player_comp_full_df(), 
+              TARGET_PLAYER = input$player_typed_name, 
+              TARGET_PLAYER_SEASON = input$select_season, 
+              TARGET_PLAYER_TEAM = input$select_team_same_name , 
+              TARGET_PLAYER_LEAGUE = input$select_league
+            )
+        )
+            
+      summary_player_per_90_data_1 <- 
+        reactive(
+          pull_statistics_row_for_a_player(
+            REACTIVE_DATA = two_player_comp_full_df_per_90(), 
+              TARGET_PLAYER = input$player_typed_name, 
+              TARGET_PLAYER_SEASON = input$select_season, 
+              TARGET_PLAYER_TEAM = input$select_team_same_name , 
+              TARGET_PLAYER_LEAGUE = input$select_league
+            )
+        )
+      
+      summary_player_percentiles_data_1 <- 
+        reactive(
+          pull_statistics_row_for_a_player(
+            REACTIVE_DATA = two_player_comp_full_percentiles(), 
+              TARGET_PLAYER = input$player_typed_name, 
+              TARGET_PLAYER_SEASON = input$select_season, 
+              TARGET_PLAYER_TEAM = input$select_team_same_name , 
+              TARGET_PLAYER_LEAGUE = input$select_league
+            )
+        )
+      
+      percentile_data_frame_one_player_df_1 <-
+        reactive(
+          percentile_data_frame_one_player(
+            RAW_DATA = summary_player_raw_data_1(), 
+            PER_90_DATA = summary_player_per_90_data_1(), 
+            PERCENTILE_DATA =  summary_player_percentiles_data_1()
+          ))
+    ### from raw data, per 90 data, percentiles data pull data for the SECOND player 
+      summary_player_raw_data_2 <- 
+        reactive(
+          pull_statistics_row_for_a_player(
+            REACTIVE_DATA = two_player_comp_full_df(), 
+              TARGET_PLAYER = input$second_player_typed_name, 
+              TARGET_PLAYER_SEASON = input$select_season_2, 
+              TARGET_PLAYER_TEAM = input$select_team_same_name_2 , 
+              TARGET_PLAYER_LEAGUE = input$select_league_2
+            )
+        )
+      
+      summary_player_per_90_data_2 <- 
+        reactive(
+          pull_statistics_row_for_a_player(
+            REACTIVE_DATA = two_player_comp_full_df_per_90(), 
+              TARGET_PLAYER = input$second_player_typed_name, 
+              TARGET_PLAYER_SEASON = input$select_season_2, 
+              TARGET_PLAYER_TEAM = input$select_team_same_name_2 , 
+              TARGET_PLAYER_LEAGUE = input$select_league_2
+            )
+        )
+      
+      summary_player_percentiles_data_2 <- 
+        reactive(
+          pull_statistics_row_for_a_player(
+            REACTIVE_DATA = two_player_comp_full_percentiles(), 
+              TARGET_PLAYER = input$second_player_typed_name, 
+              TARGET_PLAYER_SEASON = input$select_season_2, 
+              TARGET_PLAYER_TEAM = input$select_team_same_name_2 , 
+              TARGET_PLAYER_LEAGUE = input$select_league_2
+            )
+        )
+      
+      percentile_data_frame_one_player_df_2 <-
+        reactive(
+          percentile_data_frame_one_player(
+            RAW_DATA = summary_player_raw_data_2(), 
+            PER_90_DATA = summary_player_per_90_data_2(), 
+            PERCENTILE_DATA =  summary_player_percentiles_data_2()
+          ))
+      
+      output$two_player_radar_plot <- 
+        renderPlotly(
+          two_player_radar_plot(
+            PERCENTILES_PLAYER_1 = percentile_data_frame_one_player_df_1(), 
+            PERCENTILES_PLAYER_2 = percentile_data_frame_one_player_df_2(), 
+            NAME_1 = input$player_typed_name, 
+            NAME_2 = input$second_player_typed_name
+          )
+        )
     
       
       
@@ -2967,7 +3198,6 @@ sidebar <-
     width = 250, 
     sidebarMenu(
       menuItem("Introduction", tabName = "intro")
-      ,menuItem("Local Tests", tabName = 'local_test')
       ,menuItem("Helper Page", tabName = "helper")
       ,menuItem("Player Profile", tabName = "player_profile")
       ,menuItem("Two Player Comparison", tabName = "two_player_comparison")
@@ -3085,11 +3315,6 @@ body <-
                  <p style='font-size: 18px; font-weight: bold;'>Follow instructions and aqua-colored boxes for extra guidance. Have fun! </p>
                 "
               )),
-      tabItem(tabName = "local_test",
-              fluidPage(
-                dataTableOutput('target_percentiles'),
-                dataTableOutput('replicate_percentiles')
-              )), 
       tabItem(tabName = "helper", 
                     tabsetPanel(
                       tabPanel(title = "Look Up Player Name", 
@@ -3516,9 +3741,37 @@ body <-
           tabPanel(
             title = "Comparison Report", 
             fluidPage(
-              dataTableOutput('example'),
+              fluidRow(
+                column(
+                  width = 4
+                ), 
+                column(
+                  width = 4,
+                  plotOutput('create_field_plot_target_comp')
+                ),
+                column(
+                  width = 4,
+                  plotOutput('create_field_plot_second')
+                )
+              ), 
               
-              dataTableOutput('example2')
+              
+              fluidRow(
+                column(
+                  width = 4, 
+                    plotlyOutput('two_player_radar_plot')
+                ), 
+                
+                column(
+                  width = 4
+                  ## two player box plot here 
+                ), 
+                
+                column(
+                  width = 4
+                  ## two player scatterplot here 
+                )
+              )
             )
           )
         )
