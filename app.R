@@ -1118,7 +1118,7 @@ radar_quantiles_chart <-
                 range = c(0,1)
               )
             ),
-         #   margin = list(l = 25, r = 25, t = 50, b = 25), 
+            margin = list(l = 25, r = 25, t = 25, b = 0), 
             title = "Quantile Summary Statistics",
             legend = list(orientation = 'h')
           )
@@ -2099,7 +2099,9 @@ two_player_radar_plot <-
     PERCENTILES_PLAYER_2, 
     
     NAME_1, 
-    NAME_2
+    NAME_2, 
+    
+    MED_AVG_CHOICE
   ){
     
     avg_df1 <- 
@@ -2150,11 +2152,21 @@ two_player_radar_plot <-
             )
       )
     
+    if(MED_AVG_CHOICE == "Averages"){
+      avg_df1$plot_val = avg_df1$mean
+      avg_df2$plot_val = avg_df2$mean
+    }
+    
+    if(MED_AVG_CHOICE == "Medians"){
+      avg_df1$plot_val = avg_df1$median
+      avg_df2$plot_val = avg_df2$median
+    }
+    
     plot_ly(data = avg_df1, type = 'scatterpolar', mode = 'markers',
         name = NAME_1, 
         fill = 'toself', 
         
-        r = ~mean, 
+        r = ~plot_val, 
         theta = ~short_descr, 
         text = paste0(
           "Category: ", avg_df1$stat_cat, 
@@ -2164,11 +2176,11 @@ two_player_radar_plot <-
         ), 
         hoverinfo = 'text'
         ) %>%
-  add_trace(data = avg_df2, type = 'scatterpolar', mode = 'markers',
+    add_trace(data = avg_df2, type = 'scatterpolar', mode = 'markers',
             name = NAME_2,  
             
             fill = 'toself', 
-            r = ~mean, 
+            r = ~plot_val, 
             theta = ~short_descr, 
             
             text = paste0(
@@ -2197,6 +2209,78 @@ two_player_radar_plot <-
     
   }
 
+two_player_scatterplot <- 
+  function(
+    PERCENTILES_PLAYER_1, 
+    PERCENTILES_PLAYER_2, 
+    
+    NAME_1, 
+    NAME_2
+  ){
+    
+      PERCENTILES_PLAYER_1  %>%   
+        rename(p1 = player_stat, 
+               p1_90 = player_stat_per_90, 
+               p1_p = percentiles_per_90) %>% 
+      
+      left_join(
+        PERCENTILES_PLAYER_2 %>%  
+        rename(p2 = player_stat, 
+               p2_90 = player_stat_per_90, 
+               p2_p = percentiles_per_90), 
+        
+        by = "names"
+      ) %>% 
+      
+      left_join(
+        data_dict %>% 
+          rename(names = `Data.Frame.Name`), 
+        by = "names"
+      ) -> plot_df
+    
+    with(
+      plot_df, 
+      
+      plot_df %>% 
+        plot_ly(
+          type = "scatter", 
+          mode = "markers", 
+          
+          x = ~p1_p, 
+          y = ~p2_p, 
+          
+          color = stat_cat, 
+          
+          text = paste0(
+            'Statistic: ', `Pretty.Name.from.FBref`, 
+            '<br>', NAME_1, " per 90: ", round(p1_90, 2),
+            '<br>', NAME_2, " per 90: ", round(p2_90, 2),
+            
+            '<br>', NAME_1, " percentile: ", round(p1_p, 2),
+            '<br>', NAME_2, " percentile: ", round(p2_p, 2)
+          ), 
+          
+          hoverinfo = 'text'
+        )  %>% 
+
+        layout(
+          xaxis = list(title = NAME_1),
+          yaxis = list(title = NAME_2),
+          legend = list(orientation = "h", y = -0.25), 
+          
+          shapes = 
+            list(
+              type = 'line',
+              x0 = 0,
+              y0 = 0,
+              x1 = 1,
+              y1 = 1,
+              line = list(color = 'grey', width = 2, opacity = 0.75, dash = "dash")
+                )
+            )
+          )
+      
+  }
 
 
 
@@ -3181,6 +3265,17 @@ server_side <-
             PERCENTILES_PLAYER_1 = percentile_data_frame_one_player_df_1(), 
             PERCENTILES_PLAYER_2 = percentile_data_frame_one_player_df_2(), 
             NAME_1 = input$player_typed_name, 
+            NAME_2 = input$second_player_typed_name,
+            MED_AVG_CHOICE = input$medians_averages
+          )
+        )
+      
+      output$two_player_scatterplot <- 
+        renderPlotly(
+          two_player_scatterplot(
+            PERCENTILES_PLAYER_1 = percentile_data_frame_one_player_df_1(), 
+            PERCENTILES_PLAYER_2 = percentile_data_frame_one_player_df_2(), 
+            NAME_1 = input$player_typed_name, 
             NAME_2 = input$second_player_typed_name
           )
         )
@@ -3490,17 +3585,16 @@ body <-
                                     plotOutput('create_field_plot') %>% withSpinner(color="#0dc5c1")
                                     ), 
                              column(width = 3,
-                                    plotlyOutput('radar_quantiles_chart', 
-                                                 width = "100%", 
-                                                 height = "300px") %>% withSpinner(color="#0dc5c1"), 
-                                    
-                                      sliderInput(inputId = "quantile_cutoffs", 
+                                    sliderInput(inputId = "quantile_cutoffs", 
                                                   label = "Cutoff for Count", 
                                                   min = 0, max = 100, 
                                                   value = 80, 
                                                   step = 1
-                                                  )
-                                    
+                                                  ), 
+                                    plotlyOutput('radar_quantiles_chart', 
+                                                 width = "100%", 
+                                                 height = "300px") %>% withSpinner(color="#0dc5c1")
+                                      
                              ),
                              column(width = 5, 
                                     plotlyOutput('all_features_quantiles_boxplot',
@@ -3743,8 +3837,17 @@ body <-
             fluidPage(
               fluidRow(
                 column(
-                  width = 4
-                ), 
+                  width = 4,
+                  align = "center", 
+                  fluidRow(
+                    radioButtons(inputId = "medians_averages", 
+                                 label = "Averages or Medians", 
+                                 choices = c("Averages", "Medians"), 
+                                 selected = "Averages",
+                                 inline = T),
+                    plotlyOutput('two_player_radar_plot')
+                    )
+                  ), 
                 column(
                   width = 4,
                   plotOutput('create_field_plot_target_comp')
@@ -3758,18 +3861,13 @@ body <-
               
               fluidRow(
                 column(
-                  width = 4, 
-                    plotlyOutput('two_player_radar_plot')
+                  width = 6, 
+                  plotlyOutput('two_player_scatterplot')
                 ), 
                 
                 column(
-                  width = 4
+                  width = 6
                   ## two player box plot here 
-                ), 
-                
-                column(
-                  width = 4
-                  ## two player scatterplot here 
                 )
               )
             )
