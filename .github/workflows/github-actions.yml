@@ -32,9 +32,7 @@ jobs:
             packages:
               devtools@2.4.4
               tidyverse@1.3.2
-              rgeos@0.6
-              maptools@1.1
-              plotly@4.10.1
+              plotly@4.10.2
               any::rvest
               any::xml2
               worldfootballR@0.6.1
