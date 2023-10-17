@@ -3544,7 +3544,7 @@ body <-
                                  selectInput(inputId = 'comp_seasons', 
                                                label = "Select Seasons", 
                                                choices = sort(unique(dash_df$season)), 
-                                               selected = c('2022/2023'), 
+                                               sort(unique(dash_df$season)) %>% tail(2), 
                                      multiple = T
                                      ), 
                                  
@@ -3565,7 +3565,9 @@ body <-
                                       label = "Limit Players by Minutes Played:", 
                                       min = 0, 
                                       max = max(dash_df$summary_min), 
-                                      value = c(350, 4000))
+                                      value = c(dash_df %>% filter(season == sort(unique(dash_df$season)) %>% tail(1)) %>% summarise(max(games_played)) %>% unlist() * 90 %>% {./3},
+                                                dash_df %>% filter(season == sort(unique(dash_df$season)) %>% tail(1)) %>% summarise(max(games_played)) %>% unlist() * 90))
+                                 
                                )
                                )
                          )),
