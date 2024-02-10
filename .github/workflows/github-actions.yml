@@ -52,7 +52,7 @@ jobs:
               rsconnect@1.0.1
               any::stringr
               any::kableExtra
-              any::knitr
+              knitr@1.44
               ggsoccer@0.1.6
               any::curl
               shinyBS@0.20
