@@ -88,7 +88,7 @@ if(length(links_in_upate) == 0){
         
         nms_d$length = nchar(nms_d$league_name)
         nms_d %>% arrange(league_name, length) %>% print()
-  
+        
   roll_up <- roll_up_data(big_data = older_data)
   write_feather(roll_up, 'dash_df_rollup.fthr')
   
@@ -212,6 +212,20 @@ if(length(links_in_upate) != 0){
     refreshed_data = older_data %>%
       arrange(league_name, game_date, summary_player, team_name) %>% 
       distinct(league_name, game_date, summary_player, team_name, .keep_all = T)
+  }
+        
+        
+  
+  if(T == T){
+    
+    refreshed_data <- 
+      
+      refreshed_data %>% 
+        mutate(
+          season = case_when(league_name %in% c('Campeonato Brasileiro Série A' , 'Copa Libertadores de América' , 'Major League Soccer' ) & 
+                    year(older_data$game_date) == 2024  ~ "2024", 
+                    T ~ season)
+        )
   }
 ##################
 
