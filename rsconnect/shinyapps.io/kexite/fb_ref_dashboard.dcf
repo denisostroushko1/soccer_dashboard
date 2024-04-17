@@ -5,5 +5,5 @@ account: kexite
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 9551870
-bundleId: 8499255
+bundleId: 8503966
 url: https://kexite.shinyapps.io/fb_ref_dashboard/
