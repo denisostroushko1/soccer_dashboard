@@ -7,8 +7,7 @@ Last successful data update: 2024-04-21 00:16:55 CST
 
 # Product Link
 
-[Final version of PUBH 7462 project is stored
-here](https://kexite.shinyapps.io/fb_ref_dashboard/)
+[Working version of the App](https://kexite.shinyapps.io/fb_ref_dashboard/)
 
 <!--
 # Obvious Data Fixes: 
