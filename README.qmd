@@ -68,8 +68,7 @@ I an grabbing data from tables listed under "Crystal Palace Player Stats" and "A
 #| label: fig-ex
 #| fig-cap: "Example of data from FBRef.com"
 
-
-knitr::include_graphics('/Users/denisostroushko/Desktop/R/GitRepos/soccer_dashboard/Data sample.png')
+knitr::include_graphics('./Data sample.png')
 ```
 
 
