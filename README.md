@@ -3,11 +3,12 @@ Denis Ostroushko
 
 <!-- gfm -->
 
-Last successful data update: 2024-04-21 00:16:55 CST
+Last successful data update: 2024-04-23 00:21:37 CST
 
 # Product Link
 
-[Working version of the App](https://kexite.shinyapps.io/fb_ref_dashboard/)
+[Final version of PUBH 7462 project is stored
+here](https://kexite.shinyapps.io/soccer_dashboard/)
 
 <!--
 # Obvious Data Fixes: 
