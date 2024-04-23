@@ -19,7 +19,7 @@ Last successful data update: `r update_tm`
 
 # Product Link
 
-[Final version of PUBH 7462 project is stored here](https://kexite.shinyapps.io/soccer_dashboard/)
+[Working version of the App](https://kexite.shinyapps.io/fb_ref_dashboard/)
 
 <!--
 # Obvious Data Fixes: 
@@ -64,7 +64,14 @@ data visualization techniques.
 data for each player. An example of one game can be viewed [here](https://fbref.com/en/matches/e62f6e78/Crystal-Palace-Arsenal-August-5-2022-Premier-League).
 I an grabbing data from tables listed under "Crystal Palace Player Stats" and "Arsenal Player Stats". 
 
-![Example of one tab of data from FBref](/Users/denisostroushko/Desktop/R/GitRepos/soccer_dashboard/Data sample.png)
+```{r}
+#| label: fig-ex
+#| fig-cap: "Example of data from FBRef.com"
+
+
+knitr::include_graphics('/Users/denisostroushko/Desktop/R/GitRepos/soccer_dashboard/Data sample.png')
+```
+
 
 
 
