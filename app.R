@@ -2412,19 +2412,24 @@ server_side <-
       output$same_name_team_picker <- 
             renderUI({
               
-              selectInput(inputId = 'select_team_same_name', 
-                           label = "Pick a team. Likely only 1 available", 
-                           choices = same_name_teams(), 
-                           selected = dash_df[dash_df$summary_player == selected_player_profile_name() ][1,]$team_name
-                          )
+              tryCatch({
+                selectInput(inputId = 'select_team_same_name', 
+                             label = "Pick a team. Likely only 1 available", 
+                             choices = same_name_teams(), 
+                             selected = dash_df[dash_df$summary_player == selected_player_profile_name() ][1,]$team_name
+                            )
+              }, error = function(e){return(NULL)})
           })
      
     
       same_name_leagues <- 
-        reactive(dash_df[summary_player %in% selected_player_profile_name() & 
-                           season == input$select_season] %>% 
-                 select(league_name) %>% unique() %>% unlist() %>% sort() %>% 
-                     set_names(NULL))
+        tryCatch({
+          reactive(dash_df[summary_player %in% selected_player_profile_name() & 
+                             season == input$select_season] %>% 
+                   select(league_name) %>% unique() %>% unlist() %>% sort() %>% 
+                       set_names(NULL))
+        }, error = function(e){return(NULL)}
+        )
     
       output$same_name_leagues_picker <- 
             renderUI({
@@ -2454,16 +2459,18 @@ server_side <-
       
           output$table_w_names <- 
             renderDataTable({
-              dash_df[dash_df$summary_player == selected_player_profile_name() ] %>% 
-                select(summary_age, season, league_name, team_name, all_positions) %>% 
-                arrange(desc(season), league_name, team_name, all_positions) %>% 
-                mutate(summary_age = as.integer(summary_age)) %>% 
-                setNames(c("Age", "Season", "Competition", "Team", "Positions")) %>% 
-                datatable(options = list(iDisplayLength = 5,
-                                         scrollX = TRUE,
-                                         scrollY = TRUE
-                                         ), 
-                          rownames = F)
+              tryCatch({
+                dash_df[dash_df$summary_player == selected_player_profile_name() ] %>% 
+                  select(summary_age, season, league_name, team_name, all_positions) %>% 
+                  arrange(desc(season), league_name, team_name, all_positions) %>% 
+                  mutate(summary_age = as.integer(summary_age)) %>% 
+                  setNames(c("Age", "Season", "Competition", "Team", "Positions")) %>% 
+                  datatable(options = list(iDisplayLength = 5,
+                                           scrollX = TRUE,
+                                           scrollY = TRUE
+                                           ), 
+                            rownames = F)
+              }, error = function(e){return(NULL)})
             })
           
       ########## PLAYER PROFILE SUMMARY PAGE 
