@@ -2423,22 +2423,23 @@ server_side <-
      
     
       same_name_leagues <- 
-        tryCatch({
+        
           reactive(dash_df[summary_player %in% selected_player_profile_name() & 
                              season == input$select_season] %>% 
                    select(league_name) %>% unique() %>% unlist() %>% sort() %>% 
                        set_names(NULL))
-        }, error = function(e){return(NULL)}
-        )
+        
+        
     
       output$same_name_leagues_picker <- 
             renderUI({
-              
-              selectInput(inputId = 'select_league', 
-                           label = "Select Competiton", 
-                           choices = same_name_leagues(), 
-                           selected = dash_df[dash_df$summary_player == selected_player_profile_name()][1,]$league_name
-                          )
+              tryCatch({
+                selectInput(inputId = 'select_league', 
+                             label = "Select Competiton", 
+                             choices = same_name_leagues(), 
+                             selected = dash_df[dash_df$summary_player == selected_player_profile_name()][1,]$league_name
+                            )
+              }, error = function(e){return(NULL)})
           })
       
       # make sure that we have observer event for the "Update Report" button 
