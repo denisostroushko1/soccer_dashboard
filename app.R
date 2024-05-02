@@ -3361,11 +3361,13 @@ body <-
                                 font-size: 20px; /* Adjust the font size as needed */
                               }
                               '
-                              ), 
-                   ".shiny-output-error {visibility: hidden;}", 
-                   ".shiny-output-error:before {visibility: hidden;}",
-                   ".shiny-output-message:before {visibility: hidden;}",
-                   ".shiny-output-message:before {visibility: hidden;}"), 
+                              )
+                   # , 
+                   # ".shiny-output-error {visibility: hidden;}", 
+                   # ".shiny-output-error:before {visibility: hidden;}",
+                   # ".shiny-output-message:before {visibility: hidden;}",
+                   # ".shiny-output-message:before {visibility: hidden;}"
+                   ), 
     tabItems(
       tabItem(tabName = "intro", 
               HTML(
