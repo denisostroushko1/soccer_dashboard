@@ -2429,7 +2429,6 @@ server_side <-
                    select(league_name) %>% unique() %>% unlist() %>% sort() %>% 
                        set_names(NULL))
         
-        
     
       output$same_name_leagues_picker <- 
             renderUI({
@@ -2446,18 +2445,45 @@ server_side <-
 
       output$scouter_positions_filter <- 
         renderUI(
-          selectInput(inputId = 'scouter_positions', 
-                       label = 'Position', 
-                       choices = positions_short_names, 
-                       selected = 
-                        strsplit(
-                              gsub("[0-9()]", "", 
-                                   dash_df[summary_player == selected_player_profile_name()  ]$all_positions %>% unlist() %>% sort()), 
-                              ", ")[[1]], 
-                      multiple = T
-                        )
+          tryCatch({
+            selectInput(inputId = 'scouter_positions', 
+                         label = 'Position', 
+                         choices = positions_short_names, 
+                         selected = 
+                          strsplit(
+                                gsub("[0-9()]", "", 
+                                     dash_df[summary_player == selected_player_profile_name() & 
+                                               season == input$select_season & 
+                                               league_name == input$select_league ]$all_positions %>% unlist() %>% sort()), 
+                                ", ")[[1]], 
+                        multiple = T
+                          )
+          }, error = function(e){return(NULL)})
         )
+
+      ####################
+      # this is all one bit 
+      minutes_for_player <- 
+        reactive({
+          dash_df %>% filter(summary_player == selected_player_profile_name() & 
+                              season == input$select_season & 
+                              league_name == input$select_league & 
+                               team_name == input$select_team_same_name) %>% select(summary_min) %>% head(1) %>% unlist() %>% as.numeric()
+        })
       
+      min_minutes_fitler_1 <- reactive({minutes_for_player()/2})
+      max_minutes_fitler_1 <- reactive({ifelse(minutes_for_player()*2 > max(dash_df$summary_min), max(dash_df$summary_min), minutes_for_player()*2)})
+      
+      output$minutes_to_limit_dynamic <-
+        renderUI({
+          sliderInput(inputId = 'minutes_to_limit',
+            label = "Limit Players by Minutes Played:",
+            min = 0,
+            max = max(dash_df$summary_min),
+            value = c(min_minutes_fitler_1(), max_minutes_fitler_1() )
+          )
+        })
+      ################## 
           output$table_w_names <- 
             renderDataTable({
               tryCatch({
@@ -3607,17 +3633,18 @@ body <-
                                  
                                  sliderInput(inputId = 'similar_player_age_filter', 
                                   label = "Age Range for Comparisons", 
-                                  value = c(20,35), 
+                                  value = c(16,35), 
                                   min = min(dash_df$summary_age, na.rm = T), 
                                   max = max(dash_df$summary_age, na.rm = T)), 
                                  
-                                 sliderInput(inputId = 'minutes_to_limit', 
-                                      label = "Limit Players by Minutes Played:", 
-                                      min = 0, 
-                                      max = max(dash_df$summary_min), 
-                                      value = c(dash_df %>% filter(season == sort(unique(dash_df$season)) %>% tail(1)) %>% summarise(max(games_played)) %>% unlist() * 90 %>% {./3},
-                                                dash_df %>% filter(season == sort(unique(dash_df$season)) %>% tail(1)) %>% summarise(max(games_played)) %>% unlist() * 90))
-                                 
+                                 uiOutput('minutes_to_limit_dynamic')
+                                 # sliderInput(inputId = 'minutes_to_limit',
+                                 #      label = "Limit Players by Minutes Played:",
+                                 #      min = 0,
+                                 #      max = max(dash_df$summary_min),
+                                 #      value = c(dash_df %>% filter(season == sort(unique(dash_df$season)) %>% tail(1)) %>% summarise(max(games_played)) %>% unlist() * 90 %>% {./3},
+                                 #                dash_df %>% filter(season == sort(unique(dash_df$season)) %>% tail(1)) %>% summarise(max(games_played)) %>% unlist() * 90))
+
                                )
                                )
                          )),
