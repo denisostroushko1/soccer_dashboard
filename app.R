@@ -2391,7 +2391,6 @@ server_side <-
       output$picked_player_available_seasons <- 
             renderUI({
               
-              req(player_seasons)
               selectInput(inputId = 'select_season', 
                            label = "Select a Season", 
                            choices = player_seasons(),  
@@ -3362,7 +3361,9 @@ body <-
                                 font-size: 20px; /* Adjust the font size as needed */
                               }
                               '
-                              )), 
+                              ), 
+                   ".shiny-output-error {visibility: hidden;}", 
+                   ".shiny-output-error:before {visibility: hidden;}"), 
     tabItems(
       tabItem(tabName = "intro", 
               HTML(
