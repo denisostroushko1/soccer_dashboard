@@ -2390,12 +2390,17 @@ server_side <-
       
       output$picked_player_available_seasons <- 
             renderUI({
-              
-              selectInput(inputId = 'select_season', 
-                           label = "Select a Season", 
-                           choices = player_seasons(),  
-                           selected = dash_df[dash_df$summary_player == selected_player_profile_name()]$season %>% tail(1) %>% unlist()
-                          )
+              tryCatch({ # wrap actual output in this try catch thing to make sure that error message goes away when rendering the app iniitally 
+                selectInput(inputId = 'select_season', 
+                             label = "Select a Season", 
+                             choices = player_seasons(),  
+                             selected = dash_df[dash_df$summary_player == selected_player_profile_name()]$season %>% tail(1) %>% unlist()
+                            )
+                # Handle errors gracefully (e.g., return a placeholder UI)
+              }, 
+              error = function(e) {
+                return(NULL)  # Return nothing or a default UI element
+                })
           })
     
       same_name_teams <- 
@@ -3362,8 +3367,8 @@ body <-
                               }
                               '
                               )
-                   # , 
-                   # ".shiny-output-error {visibility: hidden;}", 
+                   # ,
+                   # ".shiny-output-error {visibility: hidden;}",
                    # ".shiny-output-error:before {visibility: hidden;}",
                    # ".shiny-output-message:before {visibility: hidden;}",
                    # ".shiny-output-message:before {visibility: hidden;}"
