@@ -1,3 +1,34 @@
+if(T == F){
+  source("Master Functions.R")
+      
+      print("Locally getting data for deployemnt")
+      ## conditions for a local deployment 
+      source('keys.R')
+      rsconnect::setAccountInfo(name = SHINY_ACC_NAME,
+               token = SHINY_TOKEN,
+               secret = SHINY_SECRET_TOKEN)
+      
+       Sys.setenv("AWS_ACCESS_KEY_ID" = access_key,
+                   "AWS_SECRET_ACCESS_KEY" = secret_key, 
+                   "AWS_DEFAULT_REGION" =  aws_region)
+    
+        tempfile <- tempfile()  
+        save_object(object = "s3://shiny-soccer-data/dashboard_data_csv_zip.zip", file = tempfile)
+        zipped <- unzip(tempfile)
+        older_data <- read_csv("dashboard_data.csv")
+      
+        colnames_to_remove <- colnames(older_data)[grep("[1-9]", colnames(older_data))]
+        
+        older_data <- older_data[, -c(which(colnames(older_data) %in% colnames_to_remove))]
+        
+        unlink('dashboard_data.csv')
+        unlink('dashboard_data_csv_zip.zip')
+        
+        roll_up <- roll_up_data(big_data = older_data)
+        write_feather(roll_up, 'dash_df_rollup.fthr')
+}
+
+
                                             #####################################
                                             # LOAD DATA, PACKAGES, OTHER SET UP #
                                             #####################################
@@ -2360,6 +2391,7 @@ server_side <-
       output$picked_player_available_seasons <- 
             renderUI({
               
+              req(player_seasons)
               selectInput(inputId = 'select_season', 
                            label = "Select a Season", 
                            choices = player_seasons(),  
