@@ -633,13 +633,14 @@ convert_player_per_90_to_percentiles <-
                 )
               )
             ), 
-            ~ (
-              rank(.)/length(.) - # compute percentile
-                min(rank(.)/length(.))
-              )/ # take away the min - we will scale percentiles from actual range of, say, .18 to 1, to 0-1 scale 
-              (
-                max(rank(.)/length(.)) - min(rank(.)/length(.))
-                  ), 
+          ~ rank(.)/length(.), 
+            # ~ (
+            #   rank(.)/length(.) - # compute percentile
+            #     min(rank(.)/length(.))
+            #   )/ # take away the min - we will scale percentiles from actual range of, say, .18 to 1, to 0-1 scale 
+            #   (
+            #     max(rank(.)/length(.)) - min(rank(.)/length(.))
+            #       ), 
           
             ties.method = "min"
         ) -> f
