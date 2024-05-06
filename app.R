@@ -3256,7 +3256,7 @@ server_side <-
               TEAM = input$select_team_same_name,
               SIMILAR_PLAYERS = simialr_players_df_3(),
               X_AXIS_PC = input$select_pc_plot_1_3, 
-              Y_AXIS_PC = input$select_pc_plot_2_3
+              Y_AXIS_PC = input$select_pc_plot_3_2
               )
         )
       
