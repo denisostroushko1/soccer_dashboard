@@ -3792,7 +3792,8 @@ body <-
                                  selectInput(inputId = 'comp_seasons', 
                                                label = "Select Seasons", 
                                                choices = sort(unique(dash_df$season)), 
-                                               sort(unique(dash_df$season)) %>% tail(2), 
+                                               c(unique(dash_df$season) %>% {.[nchar(.) == 4]} %>% sort() %>% tail(1), 
+                                                 unique(dash_df$season) %>% {.[nchar(.) != 4]} %>% sort() %>% tail(1)), 
                                      multiple = T
                                      ), 
                                  
