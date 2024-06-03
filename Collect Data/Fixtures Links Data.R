@@ -233,6 +233,15 @@ for(i in 2:nrow(final_df2)){
   
 }
 
+##################################################################
+
+# need to fix an issue with the seasons of Brazilian league, not sure how, but the year of the league 
+# switched from 2024 to 2025 sometime recently, causing a data quality issue 
+# 
+# update and fix added on 5/6/2024
+
+##################################################################
+
 final_df2 <- final_df2 %>% filter(end_year == true_yr)
 final_df2 <- final_df2 %>% filter(end_year >= 2017)
 

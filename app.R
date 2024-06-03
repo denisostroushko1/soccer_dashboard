@@ -139,7 +139,7 @@ standard_box_style = "overflow-y: scroll;overflow-x: scroll;"
                                             # FUNCTION TO BE USED ON THE SERVER SIDE #
                                             ##########################################
 
-                                  
+                   {               
 ### data dictionary stuff
 
 find_data_frame_names <- 
@@ -1734,6 +1734,104 @@ similar_players_euclid_dist_data <-
     return(distance_data)
   }
 
+similar_players_euclid_dist_quantile_weighted_data <- 
+  function(
+    REACTIVE_DATA, 
+    TARGET_PLAYER, 
+    TARGET_PLAYER_TEAM, 
+    SEASON, 
+    FEATURES_LIST
+  ){
+    
+    additional_features <- 
+      c(
+        "summary_player", "summary_min", 'team_name', "league_name", "comb_positions", "summary_age", "games_played"
+      )
+    
+    df <- 
+      rbind(
+        REACTIVE_DATA %>% ungroup() %>% filter(summary_player %in% TARGET_PLAYER & team_name == TARGET_PLAYER_TEAM),
+        REACTIVE_DATA %>% filter(team_name != TARGET_PLAYER_TEAM)
+      ) %>% 
+    
+    select(all_of(
+        c(FEATURES_LIST, additional_features)
+      ))
+  
+    colnames(df) <- c(FEATURES_LIST, additional_features)
+    
+    minutes <- df$summary_min
+    
+    # df_per_90 <- df %>% select(all_of(
+    #       c(FEATURES_LIST)))
+
+    df_per_90 <- df %>%
+      mutate_at(
+        vars(all_of(c(FEATURES_LIST))), ~ . / summary_min * 90)
+    
+    df_per_90 %>% 
+      select(all_of(FEATURES_LIST)) %>% 
+      summarise(
+        across(everything(), ~ mean(., na.rm = T))
+      )  -> means 
+    
+    df_per_90 %>% 
+      select(all_of(FEATURES_LIST)) %>% 
+      summarise(
+        across(everything(), ~ sd(., na.rm = T))
+      )  %>% t()  -> sds
+    
+    df_per_90 <- 
+      df_per_90 %>% 
+      mutate_at(
+        #across(all_of(c(FEATURES_LIST)), 
+              vars(all_of(c(FEATURES_LIST))), 
+               ~(. - mean(.))/sd(.)
+               )
+      
+    df_per_90 <- na.omit(df_per_90)
+    
+    quantiles_df <- 
+      df_per_90 %>% 
+        mutate_at(
+              vars(all_of(c(FEATURES_LIST))), 
+               ~ rank(.)/length(.), ties.method = "min"
+               )
+    
+    points <- 
+      df_per_90 %>% filter(summary_player %in% TARGET_PLAYER & team_name %in% TARGET_PLAYER_TEAM) %>%
+         select(all_of(FEATURES_LIST)) %>%
+         setNames(FEATURES_LIST) %>% unlist()
+
+    qs <- 
+      quantiles_df %>% filter(summary_player %in% TARGET_PLAYER & team_name %in% TARGET_PLAYER_TEAM) %>%
+         select(all_of(FEATURES_LIST)) %>%
+         setNames(FEATURES_LIST) %>% unlist()
+    
+    ## rescale them such that they add up to 1 
+    qs <- qs / sum(qs)
+    
+    ##############
+    
+    df_per_902 <-
+       df_per_90 %>%
+        select(all_of(FEATURES_LIST)) %>%
+        setNames(FEATURES_LIST) %>%
+        mutate(across(everything(), ~ (. - points[match(cur_column(), names(points))])^2
+                      )
+               )
+
+    dist = sqrt(as.matrix(df_per_902) %*% as.matrix(qs))
+    
+    md <- max(dist)
+
+    distance_data =
+      cbind(df, dist) %>%
+      mutate(scaled_dist = dist / md)
+
+    return(distance_data)
+  }
+
 pca_results <- 
   function(
     REACTIVE_DATA, 
@@ -2420,7 +2518,7 @@ two_player_scatterplot <-
       
   }
 
-
+}
 
                                             ########################
                                             # LOAD UP SERVER SIDE #
@@ -2890,6 +2988,17 @@ server_side <-
       similar_players_euclid_dist_data_df <- 
         reactive(
           similar_players_euclid_dist_data(
+            REACTIVE_DATA = reactive_player_summary_df(), 
+            TARGET_PLAYER = input$player_typed_name, 
+            TARGET_PLAYER_TEAM = input$select_team_same_name, 
+            SEASON = input$select_season, 
+            FEATURES_LIST = best_features_vector()
+          )
+        )
+            
+      similar_players_euclid_dist_quantile_weighted_data_df <- 
+        reactive(
+          similar_players_euclid_dist_quantile_weighted_data(
             REACTIVE_DATA = reactive_player_summary_df(), 
             TARGET_PLAYER = input$player_typed_name, 
             TARGET_PLAYER_TEAM = input$select_team_same_name, 
