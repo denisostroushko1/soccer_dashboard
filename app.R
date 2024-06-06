@@ -2675,7 +2675,7 @@ server_side <-
                                team_name == input$select_team_same_name) %>% select(summary_min) %>% head(1) %>% unlist() %>% as.numeric()
         })
       
-      min_minutes_fitler_1 <- reactive({minutes_for_player()/2})
+      min_minutes_fitler_1 <- reactive({ifelse(minutes_for_player()/2 < 500, 500, minutes_for_player()/2)})
       max_minutes_fitler_1 <- reactive({ifelse(minutes_for_player()*2 > max(dash_df$summary_min), max(dash_df$summary_min), minutes_for_player()*2)})
       
       output$minutes_to_limit_dynamic <-
@@ -2684,7 +2684,8 @@ server_side <-
             label = "Limit Players by Minutes Played:",
             min = 0,
             max = max(dash_df$summary_min),
-            value = c(min_minutes_fitler_1(), max_minutes_fitler_1() )
+        #     value = c(min_minutes_fitler_1(), max_minutes_fitler_1() )
+            value = c(500, 2000)
           )
         })
       ################## 
