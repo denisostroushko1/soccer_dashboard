@@ -115,7 +115,7 @@ if(length(links_in_upate) == 0){
   }
 
 if(length(links_in_upate) != 0){
-  new_data <- detail_fb_data_for_all_matches(matches_urls = links_in_upate, time_pause = 5)
+  new_data <- detail_fb_data_for_all_matches(matches_urls = links_in_upate, time_pause = 10)
     # hoping that increasing sleep time from 3 to 5 will add stability 
     # unfortunately, there are still errors sometimes when we set time_pause equal to 3
   ### pipe all links from the new list into a collect data function 
