@@ -3,7 +3,7 @@ Denis Ostroushko
 
 <!-- gfm -->
 
-Last successful data update: 2024-07-01 00:31:22 CST
+Last successful data update: 2024-07-03 00:30:52 CST
 
 # Product Link
 
@@ -61,7 +61,14 @@ player. An example of one game can be viewed
 I an grabbing data from tables listed under “Crystal Palace Player
 Stats” and “Arsenal Player Stats”.
 
+<div id="fig-ex">
+
 ![](./Data%20sample.png)
+
+
+Figure 1: Example of data from FBRef.com
+
+</div>
 
 Note that there are 6 tabs for each match, and I am scraping all of
 those for the final data set. Some columns are repeated, so the final
