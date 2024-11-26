@@ -3,7 +3,7 @@ Denis Ostroushko
 
 <!-- gfm -->
 
-Last successful data update: 2024-11-24 23:38:59 CST
+Last successful data update: 2024-11-25 23:36:14 CST
 
 # Product Link
 
@@ -64,7 +64,6 @@ Stats” and “Arsenal Player Stats”.
 <div id="fig-ex">
 
 ![](./Data%20sample.png)
-
 
 Figure 1: Example of data from FBRef.com
 
